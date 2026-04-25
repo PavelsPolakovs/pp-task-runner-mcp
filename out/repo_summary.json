@@ -1,0 +1,46 @@
+{
+  "repo_name": "pp-task-runner-mcp",
+  "description": "",
+  "python_requires": "",
+  "dependencies": [
+    "mcp[cli]>=1.0.0",
+    "python-dotenv>=1.0.0"
+  ],
+  "entrypoint": {
+    "name": null,
+    "module": "src.main",
+    "attr": "main",
+    "source": "/home/polakovs/PhpstormProjects/pp-task-runner-mcp/src/main.py"
+  },
+  "cli_scripts": [],
+  "frameworks": [
+    "mcp (FastMCP)"
+  ],
+  "src_summary": {
+    "modules": 10,
+    "tools": [],
+    "prompts": [],
+    "resources": [],
+    "other_functions_count": 1
+  },
+  "tests": {
+    "files": 2,
+    "examples": [
+      "tests/__init__.py",
+      "tests/test_server.py"
+    ]
+  },
+  "run_instructions": "\n\n```bash\n# STDIO transport (Claude Desktop, Cursor, etc.)\npython -m src.main --transport stdio\n\n# SSE transport (HTTP-based clients)\npython -m src.main --transport sse\n```\n\n## Claude Desktop Config\n\nAdd to `~/Library/Application Support/Claude/claude_desktop_config.json`:\n\n```json\n{\n  \"mcpServers\": {\n    \"my-mcp-server\": {\n      \"command\": \"python\",\n      \"args\": [\"-m\", \"src.main\", \"--transport\", \"stdio\"],\n      \"cwd\": \"/absolute/path/to/my-mcp-server\"\n    }\n  }\n}\n```\n\n## Structure\n\n```\nmy-mcp-server/\n\u251c\u2500\u2500 src/\n\u2502   \u251c\u2500\u2500 tools/           # Tool definitions (@mcp.tool)\n\u2502   \u251c\u2500\u2500 resources/       # Resource definitions (@mcp.resource)\n\u2502   \u251c\u2500\u2500 prompts/         # Prompt templates (@mcp.prompt)\n\u2502   \u251c\u2500\u2500 config.py        # Configuration & env vars\n\u2502   \u251c\u2500\u2500 server.py        # FastMCP instance + lifespan\n\u2502   \u2514\u2500\u2500 main.py          # Entrypoint\n\u251c\u2500\u2500 tests/\n\u251c\u2500\u2500 .env.example\n\u251c\u2500\u2500 requirements.txt\n\u251c\u2500\u2500 pyproject.toml\n\u2514\u2500\u2500 README.md\n```\n\n## Connection Message\n\nOn startup, the server prints to stderr:\n```\n\u2705 MCP Server connected and ready!\n```\n",
+  "build_files": [
+    "pyproject.toml",
+    "requirements.txt"
+  ],
+  "files_examined": [
+    "/home/polakovs/PhpstormProjects/pp-task-runner-mcp/pyproject.toml",
+    "/home/polakovs/PhpstormProjects/pp-task-runner-mcp/requirements.txt",
+    "/home/polakovs/PhpstormProjects/pp-task-runner-mcp/README.md",
+    "/home/polakovs/PhpstormProjects/pp-task-runner-mcp/src",
+    "/home/polakovs/PhpstormProjects/pp-task-runner-mcp/tests"
+  ],
+  "generated_at": "2026-04-25T08:49:13.368664Z"
+}
