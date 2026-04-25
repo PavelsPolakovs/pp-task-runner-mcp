@@ -142,9 +142,7 @@ class FastMCP:
                     requested visual style."""
                     fragments = []
                     # Title / header
-                    fragments.append(('class:title', 'Skills'))
-                    fragments.append(('', '   '))
-                    fragments.append(('class:hint', 'Enter to use, t to sort, Esc to close'))
+                    fragments.append(('class:title', 'Start menu'))
                     fragments.append(('', '\n\n'))
 
                     for i, (val, label) in enumerate(items if not state['sorted'] else list(reversed(items))):
@@ -157,7 +155,6 @@ class FastMCP:
                         fragments.append(('', '\n'))
 
                     fragments.append(('', '\n'))
-                    fragments.append(('class:hint', 'Plugin skills are managed via /plugin'))
                     return fragments
 
                 control = FormattedTextControl(lambda: _render_menu())
