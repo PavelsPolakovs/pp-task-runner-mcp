@@ -19,12 +19,14 @@ logger = logging.getLogger(__name__)
 async def lifespan(server):
     print("✅ MCP Server connected and ready!", file=sys.stderr)
     logger.info("Server started successfully.")
+    # No menu integration here — keep server lifecycle minimal. If menu
+    # functionality is needed, it lives in `src.menu_mcp_server` and can be
+    # invoked separately by the entrypoint.
     yield
     logger.info("Server shutting down.")
 
 
 mcp = FastMCP("my-mcp-server", lifespan=lifespan)
-
 
 @mcp.tool()
 async def hello(name: str) -> str:
