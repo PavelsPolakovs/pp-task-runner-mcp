@@ -5,7 +5,7 @@ def main():
     # Minimal menu runner: do not perform extra dependency checks — assume
     # the environment has the required interactive packages installed.
     from mcp.server.fastmcp import FastMCP
-    from .menu_mcp_server import register_tools
+    from .menu_mcp import register_tools
 
     parser = argparse.ArgumentParser(description="MCP Menu Runner")
     parser.add_argument(

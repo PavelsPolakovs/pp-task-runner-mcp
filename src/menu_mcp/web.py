@@ -1,0 +1,146 @@
+"""Web UI builder and HTTP handler factory for the menu package."""
+import json
+import time
+import threading
+import webbrowser
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+
+def _build_html(skills: dict) -> str:
+    skill_buttons = "".join(
+        f'<button class="skill-btn" onclick="pick(\'{name}\')">'
+        f"<strong>{name}</strong><span>{desc}</span></button>"
+        for name, desc in skills.items()
+    )
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Select Skill — Claude Code</title>
+<style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;
+     display:flex;align-items:center;justify-content:center;min-height:100vh}}
+.card{{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.1);
+       padding:32px;width:100%;max-width:480px}}
+h1{{font-size:1.1em;color:#555;margin-bottom:20px;font-weight:500}}
+.skill-btn{{display:block;width:100%;padding:14px 16px;margin:8px 0;
+            border:1px solid #e0e0e0;border-radius:8px;background:#fff;
+            cursor:pointer;text-align:left;font-size:.95em;transition:.15s}}
+.skill-btn:hover{{background:#f0f7ff;border-color:#4a9eff}}
+.skill-btn strong{{display:block}}
+.skill-btn span{{display:block;font-size:.78em;color:#999;margin-top:3px}}
+.exit-btn{{display:block;width:100%;padding:12px 16px;margin-top:16px;
+           border:1px solid #ffcdd2;border-radius:8px;background:#fff;
+           cursor:pointer;text-align:center;font-size:.9em;color:#e53935;transition:.15s}}
+.exit-btn:hover{{background:#ffebee}}
+#status{{margin-top:16px;font-size:.85em;color:#4a9eff;min-height:1.2em;text-align:center}}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Select a skill for Claude Code</h1>
+  {skill_buttons}
+  <button class="exit-btn" onclick="doExit()">Exit</button>
+  <div id="status"></div>
+</div>
+<script>
+async function post(body){{
+  const r=await fetch('/action',{{method:'POST',
+    headers:{{'Content-Type':'application/json'}},body:JSON.stringify(body)}});
+  return r.json();
+}}
+async function pick(name){{
+  document.getElementById('status').textContent='Running '+name+'…';
+  try{{
+    const d=await post({{action:'select',name}});
+    document.getElementById('status').textContent=d.feedback||'✓ Done';
+  }}catch{{document.getElementById('status').textContent='Error';}}
+}}
+async function doExit(){{
+  document.getElementById('status').textContent='Closing…';
+  try{{await post({{action:'exit',name:''}});}}catch{{}}
+  window.close();
+}}
+window.addEventListener('beforeunload',()=>
+  navigator.sendBeacon('/action',JSON.stringify({{action:'close',name:''}})));
+</script>
+</body>
+</html>"""
+
+
+def make_handler(skills: dict, menu_state) -> type:
+    """Return a BaseHTTPRequestHandler subclass bound to the provided skills and menu_state.
+
+    The returned handler will use the provided `menu_state` to post events
+    to `menu_state.events` and to shut down the `menu_state.server` when needed.
+    """
+
+    class _Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/":
+                body = _build_html(skills).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+        def do_POST(self):
+            if self.path != "/action":
+                self.send_response(404)
+                self.end_headers()
+                return
+
+            length = int(self.headers.get("Content-Length", 0))
+            payload = json.loads(self.rfile.read(length))
+            action = payload.get("action", "")
+            name = payload.get("name", "")
+
+            if action == "select" and name in skills:
+                self._send_json({"feedback": "✓ Sent to Claude"})
+                menu_state.events.put({"action": "greet", "name": name, "message": skills[name]})
+
+            elif action == "exit":
+                self._send_json({"feedback": "Goodbye!"})
+                menu_state.events.put({"action": "exit"})
+                self._schedule_shutdown()
+
+            elif action == "close":
+                # sendBeacon — no response body needed
+                self.send_response(200)
+                self.end_headers()
+                menu_state.events.put({"action": "close"})
+                self._schedule_shutdown()
+
+            else:
+                self.send_response(400)
+                self.end_headers()
+
+        def _send_json(self, data: dict):
+            body = json.dumps(data).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _schedule_shutdown(self):
+            def _do():
+                time.sleep(0.3)
+                with menu_state.lock:
+                    server = menu_state.server
+                    menu_state.server = None
+                if server:
+                    server.shutdown()
+
+            threading.Thread(target=_do, daemon=True).start()
+
+        def log_message(self, *_):
+            pass
+
+    return _Handler
+
