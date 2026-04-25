@@ -7,91 +7,42 @@ __pycache__/
 *.so
 
 # Distribution / packaging
-.Python
 build/
 dist/
-develop-eggs/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+pip-wheel-metadata/
 
-# PyInstaller
-*.manifest
-*.spec
+# Virtual environments
+.venv/
+venv/
+env/
 
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
 
 # Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*,cover
-.hypothesis/
 .pytest_cache/
+htmlcov/
+coverage.xml
 
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# Virtual environments
-.venv/
-venv/
-ENV/
-env/
-env.bak/
-venv.bak/
-
-# Poetry virtualenv in project
-.poetry/
-
-# Editor and IDE
-.vscode/
+# IDEs and editors
 .idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
 
-# macOS
+# OS files
 .DS_Store
-
-# env files
-.env
-.env.*
+Thumbs.db
 
 # Logs
+logs/
 *.log
 
-# Local settings and databases
-local_settings.py
-instance/
-*.sqlite3
+# Local env files
+.env
 
-# Editor backup files
-*~
-*.swp
-*.swo
-
-# mypy
-.mypy_cache/
-
-# Celery
-celerybeat-schedule
+# Preserve copies created by prune script
+.preserve_menu_*/
 

@@ -1,13 +1,9 @@
 import argparse
-from .deps import check_required_packages
 
 
 def main():
-    # Validate packages before importing modules that expect prompt_toolkit
-    check_required_packages()
-
-    # Run the menu-based FastMCP instance. The menu logic lives in
-    # `src.menu_mcp_server` and handles showing the interactive start menu.
+    # Minimal menu runner: do not perform extra dependency checks — assume
+    # the environment has the required interactive packages installed.
     from .mcp.server.fastmcp import FastMCP
     from .menu_mcp_server import register_tools
 
