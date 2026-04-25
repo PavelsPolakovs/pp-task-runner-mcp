@@ -93,7 +93,14 @@ class FastMCP:
             # back to the simple line-based input fallback.
 
             async def _prompt_toolkit_menu() -> str:
-                """Return 'greeting', 'exit', or None if cancelled/not available."""
+                """Return 'greeting', 'exit', or None if cancelled/not available.
+
+                Render an inline arrow-style list (like the provided example):
+                - left column shows an arrow for the selected item
+                - a small help line is shown above the list
+                - supports ↑/↓ (or k/j), Enter to select, 't' to toggle sort,
+                  and Esc/Ctrl-C to cancel
+                """
                 if not _HAS_PROMPT_TOOLKIT:
                     # Inform the user once about missing dependency and
                     # fall back to the line-input prompt.
@@ -104,30 +111,113 @@ class FastMCP:
                     return None
 
                 try:
-                    from prompt_toolkit.shortcuts import radiolist_dialog
+                    from prompt_toolkit.application import Application
+                    from prompt_toolkit.layout import Layout
+                    from prompt_toolkit.layout.containers import HSplit, VSplit, Window
+                    from prompt_toolkit.layout.controls import FormattedTextControl
+                    from prompt_toolkit.widgets import Label
+                    from prompt_toolkit.key_binding import KeyBindings
                     from prompt_toolkit.styles import Style
                 except Exception:
                     return None
 
                 style = Style.from_dict({
-                    # Use bright cyan for focused text and bold
-                    'radio-selected': 'fg:ansicyan bold',
-                    'radio': 'fg:ansiwhite',
+                    'title': 'bold fg:ansicyan',
+                    'hint': 'fg:ansiblue',
+                    'arrow': 'fg:ansiyellow bold',
+                    'item': '',
                 })
 
-                # radiolist_dialog is synchronous; run it in a thread to avoid
-                # blocking the asyncio loop.
-                try:
-                    result = await asyncio.to_thread(
-                        radiolist_dialog,
-                        title="MCP Start Menu",
-                        text="Select an option:",
-                        values=[('greeting', 'Greeting'), ('exit', 'Exit')],
-                        style=style,
-                    )
-                    return result
-                except Exception:
-                    return None
+                # The menu items (value, label). You can expand this list.
+                items = [
+                    ('greeting', 'Greeting'),
+                    ('exit', 'Exit'),
+                ]
+
+                state = {'idx': 0, 'sorted': False}
+
+                def _render_menu():
+                    """Return formatted text for the menu with an arrow on the
+                    selected line and a help hint at the top, matching the
+                    requested visual style."""
+                    fragments = []
+                    # Title / header
+                    fragments.append(('class:title', 'Skills'))
+                    fragments.append(('', '   '))
+                    fragments.append(('class:hint', 'Enter to use, t to sort, Esc to close'))
+                    fragments.append(('', '\n\n'))
+
+                    for i, (val, label) in enumerate(items if not state['sorted'] else list(reversed(items))):
+                        if i == state['idx']:
+                            fragments.append(('class:arrow', '› '))
+                            fragments.append(('class:item', label))
+                        else:
+                            fragments.append(('', '  '))
+                            fragments.append(('class:item', label))
+                        fragments.append(('', '\n'))
+
+                    fragments.append(('', '\n'))
+                    fragments.append(('class:hint', 'Plugin skills are managed via /plugin'))
+                    return fragments
+
+                control = FormattedTextControl(lambda: _render_menu())
+                window = Window(content=control, dont_extend_height=True)
+
+                kb = KeyBindings()
+
+                @kb.add('up')
+                @kb.add('k')
+                def _up(event):
+                    state['idx'] = (state['idx'] - 1) % len(items)
+
+                @kb.add('down')
+                @kb.add('j')
+                def _down(event):
+                    state['idx'] = (state['idx'] + 1) % len(items)
+
+                @kb.add('t')
+                def _toggle_sort(event):
+                    state['sorted'] = not state['sorted']
+                    state['idx'] = 0
+
+                @kb.add('enter')
+                @kb.add('c-m')
+                @kb.add('c-j')
+                def _enter(event):
+                    idx = state['idx']
+                    selected_list = items if not state['sorted'] else list(reversed(items))
+                    val = selected_list[idx][0]
+                    try:
+                        event.app.exit(result=val)
+                    except Exception:
+                        event.app.exit()
+
+                @kb.add('escape')
+                @kb.add('c-c')
+                def _cancel(event):
+                    try:
+                        event.app.exit(result=None)
+                    except Exception:
+                        event.app.exit()
+
+                body = HSplit([
+                    window,
+                ])
+
+                app = Application(layout=Layout(body, focused_element=window), key_bindings=kb, style=style, full_screen=False)
+
+                def _run_app():
+                    try:
+                        try:
+                            app.layout.focus(window)
+                        except Exception:
+                            pass
+                        return app.run()
+                    except Exception:
+                        return None
+
+                result = await asyncio.to_thread(_run_app)
+                return result
 
             # If stdin isn't a TTY, use the old line-input fallback
             tty_mode = sys.stdin.isatty()
