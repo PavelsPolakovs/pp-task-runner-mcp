@@ -19,6 +19,22 @@ python -m src.main --transport stdio
 python -m src.main --transport sse
 ```
 
+## Package layout / imports
+
+This project uses the `src` package as the primary import root. The implementation
+for the MCP server lives under `src/mcp/...` and the project is intended to be run
+with the module form so relative imports resolve correctly. Example:
+
+```bash
+# Run the server as a module so imports like `from .mcp...` work:
+python -m src.main --transport stdio
+```
+
+Note: A top-level `mcp/` shim (that duplicated `src/mcp`) was previously included
+for convenience during development. That shim has been removed — the project now
+uses package-local imports and the `Makefile` targets have been validated to work
+without the shim.
+
 ## Examples: start the MCP server for Copilot and Claude Code
 
 Below are concrete examples showing how to start this MCP server so it can be used by local developer tools (VS Code / Copilot) and by Claude (Desktop / Code) clients. Adjust the `cwd` path to the absolute path of this repository on your machine.

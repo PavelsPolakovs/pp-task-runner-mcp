@@ -43,44 +43,41 @@ python -m src.main --transport stdio
 python -m src.main --transport sse
 ```
 
-## Claude Desktop Config
+## Examples: start the MCP server for Copilot and Claude Code
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+Below are concrete examples showing how to start this MCP server so it can be used by local developer tools (VS Code / Copilot) and by Claude (Desktop / Code) clients. Adjust the `cwd` path to the absolute path of this repository on your machine.
 
-```json
-{
-  "mcpServers": {
-    "my-mcp-server": {
-      "command": "python",
-      "args": ["-m", "src.main", "--transport", "stdio"],
-      "cwd": "/absolute/path/to/my-mcp-server"
-    }
-  }
-}
+### PhpStorm (for Copilot or local development in JetBrains IDEs)
+
+If you use PhpStorm (or other JetBrains IDEs) you can run the MCP server from a Run/Debug configuration or via an External Tool. Below are two options.
+
+Option A — Run/Debug Configuration (recommended when Python support is enabled):
+
+1. Open Run -> Edit Configurations...
+2. Click + -> Python configuration.
+3. Configure:
+   - Name: `Run MCP Server (stdio)`
+   - Module name: `src.main` (or Script path: leave empty if using module)
+   - Parameters: `--transport stdio`
+   - Working directory: `/absolute/path/to/my-mcp-server`
+   - Python interpreter: select your project interpreter
+4. Apply and Run the configuration. The server output will appear in the Run tool window.
+
+Option B — External Tool (works without Python run configuration):
+
+1. Open Settings/Preferences -> Tools -> External Tools.
+2. Click + to add a new external tool with values:
+   - Name: `Run MCP Server (stdio)`
+   - Program: `python`
+   - Arguments: `-m src.main --transport stdio`
+   - Working directory: `$ProjectFileDir$`
+3. Save. Run it from Tools -> External Tools -> Run MCP Server (stdio).
+
+Alternatively you can run the same command in PhpStorm's built-in terminal:
+
+```bash
+python -m src.main --transport stdio
 ```
 
-## Structure
-
-```
-my-mcp-server/
-├── src/
-│   ├── tools/           # Tool definitions (@mcp.tool)
-│   ├── resources/       # Resource definitions (@mcp.resource)
-│   ├── prompts/         # Prompt templates (@mcp.prompt)
-│   ├── config.py        # Configuration & env vars
-│   ├── server.py        # FastMCP instance + lifespan
-│   └── main.py          # Entrypoint
-├── tests/
-├── .env.example
-├── requirements.txt
-├── pyproject.toml
-└── README.md
-```
-
-## Connection Message
-
-On startup, the server prints to stderr:
-```
-✅ MCP Server connected and ready!
-```
+The server will print the connection message and registered tools to the Run
 ```

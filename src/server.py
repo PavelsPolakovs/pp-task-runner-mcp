@@ -1,7 +1,11 @@
 import sys
 import logging
 from contextlib import asynccontextmanager
-from mcp.server.fastmcp import FastMCP
+
+# Use a relative import so src can be executed as a package (python -m src.main)
+# and the top-level `mcp/` shim becomes optional. This resolves imports to
+# the implementation in `src/mcp/...` when the package is run as a module.
+from .mcp.server.fastmcp import FastMCP
 
 logging.basicConfig(
     level=logging.INFO,
