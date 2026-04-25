@@ -6,6 +6,7 @@ components in this package.
 import json
 import os
 import queue
+import subprocess
 import threading
 import webbrowser
 from http.server import ThreadingHTTPServer
@@ -73,8 +74,34 @@ def register_tools(mcp) -> None:
         """Return available skills as JSON."""
         return json.dumps([{"name": n, "description": d} for n, d in SKILLS.items()])
 
+    _REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    def update() -> str:
+        """Fetch latest changes from the remote git repository (git pull).
+
+        Returns the git output. After a successful update, reconnect the MCP
+        server in Claude Code (/mcp → Reconnect) to reload the new code.
+        """
+        try:
+            result = subprocess.run(
+                ["git", "pull"],
+                cwd=_REPO_DIR,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            output = (result.stdout + result.stderr).strip()
+            if result.returncode != 0:
+                return f"git pull failed (exit {result.returncode}):\n{output}"
+            return f"Updated successfully:\n{output}\n\nReconnect the MCP server to reload."
+        except subprocess.TimeoutExpired:
+            return "git pull timed out after 30 seconds."
+        except Exception as e:
+            return f"Error running git pull: {e}"
+
     mcp.tool()(open_menu)
     mcp.tool()(select_skill)
     mcp.tool()(get_active_skill)
     mcp.tool()(list_skills)
+    mcp.tool()(update)
 
