@@ -4,10 +4,80 @@ Initial MCP (Model Context Protocol) server structure using FastMCP.
 
 ## Setup
 
+This project requires Python 3. The instructions below separate installing
+pip (if missing) from project-specific setup (installing dependencies and
+creating a `.env` file). If you already have pip available for your Python 3
+interpreter you can skip the "Install pip" section and go straight to
+"Project setup".
+
+Prerequisites
+- Python 3.x installed.
+- pip available for that Python interpreter (recommended to use a virtual
+  environment).
+
+Install pip (if needed)
+
+This repository includes a Makefile helper that can attempt to install or
+bootstrap pip for the selected Python interpreter. It will try Python's
+`ensurepip`, fall back to common platform package managers, and finally use
+the PyPA bootstrap script as a last resort.
+
+Use the Makefile helper:
+
 ```bash
-pip install -r requirements.txt
+make ensure-pip
+```
+
+If you prefer to install pip manually, use your OS package manager or the
+standard Python bootstrap methods (for example, `sudo apt install python3-pip`
+on Debian/Ubuntu, `brew install python` on macOS, or `python -m ensurepip`),
+then continue with the "Project setup" steps below.
+
+Project setup (install dependencies and create config)
+```bash
+# (recommended) create and activate a virtual environment first:
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Upgrade packaging tools and install project requirements:
+python3 -m pip install --upgrade pip setuptools wheel
+python3 -m pip install -r requirements.txt
+
+# Copy example environment and edit values as needed:
 cp .env.example .env
 ```
+
+Windows (PowerShell):
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install -r requirements.txt
+copy .env.example .env
+```
+
+If you prefer to use the Makefile helper:
+```bash
+# Attempt to ensure pip is available for the selected Python interpreter
+# (this runs the `ensure-pip` target which bootstraps pip or falls back to
+# common package managers), or run the installer which invokes it for you:
+make ensure-pip
+
+# Install development dependencies (this target calls `ensure-pip` first):
+make install-dev
+```
+
+The Makefile `ensure-pip` target will attempt to bootstrap pip via Python's
+`ensurepip` module and, if that fails, will try common platform package
+managers (apt/yum/brew) where appropriate. Use `make ensure-pip` if you want
+to only install pip; use `make install-dev` to ensure pip is present and then
+install the project's requirements.
+
+Notes:
+- Use `python3 -m pip` to ensure pip matches the interpreter you intend to use.
+- `cp .env.example .env` is a project configuration step — edit `.env` to add
+  secrets or API keys (the example file is checked in, secrets are not).
+- Virtual environments are recommended to avoid modifying the system Python.
 
 ## Run
 

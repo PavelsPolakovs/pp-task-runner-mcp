@@ -16,7 +16,7 @@ SERVER_MODULE := src.main
 
 
 ### PHONY targets
-.PHONY: help start run-stdio run-sse run-bg install-dev repo-summary clean
+.PHONY: help start run-stdio run-sse run-bg install-dev ensure-pip repo-summary clean
 
 
 ### Help / Documentation
@@ -76,7 +76,15 @@ run-bg:
 ### Setup / Install
 install-dev:
 	@echo "Installing development dependencies from $(REQ_FILE) using $(PIP)"
-	$(PIP) install -r $(REQ_FILE)
+	# Ensure pip is available for the selected Python interpreter.
+	@$(MAKE) ensure-pip PYTHON=$(PYTHON) PIP="$(PIP)"
+	@$(PIP) install -r $(REQ_FILE)
+
+
+### Ensure pip is available for $(PYTHON)
+ensure-pip:
+	@echo "Ensuring pip is available for $(PYTHON)"
+	@bash $(PROJECT_DIR)/scripts/ensure_pip.sh $(PYTHON) "$(PIP)"
 
 
 ### Utilities
