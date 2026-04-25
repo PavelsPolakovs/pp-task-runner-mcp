@@ -1,26 +1,24 @@
 import argparse
-from .deps import check_required_packages
 
 
 def main():
-    # Validate packages before importing server code that expects prompt_toolkit
-    check_required_packages()
+    # Minimal menu runner: do not perform extra dependency checks — assume
+    # the environment has the required interactive packages installed.
+    from .mcp.server.fastmcp import FastMCP
+    from .menu_mcp_server import register_tools
 
-    # Import the MCP server after dependency check so the process only starts
-    # when required interactive dependencies are available.
-    from src.server import mcp
-
-    parser = argparse.ArgumentParser(description="MCP Server")
+    parser = argparse.ArgumentParser(description="MCP Menu Runner")
     parser.add_argument(
         "--transport",
         choices=["stdio", "sse"],
         default="stdio",
-        help="Transport layer to use",
+        help="Transport layer to use (stdio recommended for interactive menu)",
     )
     args = parser.parse_args()
 
-
-    mcp.run(transport=args.transport)
+    m = FastMCP("skill-menu-main")
+    register_tools(m)
+    m.run(transport=args.transport)
 
 
 if __name__ == "__main__":

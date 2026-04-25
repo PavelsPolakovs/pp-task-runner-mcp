@@ -1,212 +1,104 @@
-# my-mcp-server
+# MCP Menu Runner — инструкция по запуску в Cloud Code / claude mcp
 
-Initial MCP (Model Context Protocol) server structure using FastMCP.
+Коротко: этот репозиторий содержит минимальный MCP-сервер/меню, который показывает стартовое интерактивное меню (questionary/prompt_toolkit).
+Основная точка запуска — `server.py` в корне репозитория. Она добавляет `src` в `PYTHONPATH` и вызывает `src.main`.
 
-## Setup
+Важно про интерактивность
+- Меню использует `questionary` / `prompt_toolkit` и требует TTY/stdin для интерактивной работы.
+- Если среда запуска (например, менеджер `claude mcp`) не предоставляет TTY и использует stdio как машинный транспорт, интерактивное меню при старте НЕ будет показано. В таком случае можно заранее задать выбор через переменные окружения или вызывать меню вручную позже.
 
-This project requires Python 3. The instructions below separate installing
-pip (if missing) from project-specific setup (installing dependencies and
-creating a `.env` file). If you already have pip available for your Python 3
-interpreter you can skip the "Install pip" section and go straight to
-"Project setup".
+Файлы
+- `server.py` — минимальная обёртка для запуска (рекомендуется использовать в командах внешних менеджеров).
+- `Makefile` — цель `make run-menu` запускает меню локально.
+- `src/menu_mcp_server.py` — логика меню и регистрация инструментов (`get_active_skill`, `reopen_menu`).
+- `src/mcp/server/fastmcp.py` — локальный shim FastMCP для тестирования.
 
-Prerequisites
-- Python 3.x installed.
-- pip available for that Python interpreter (recommended to use a virtual
-  environment).
-
-Install pip (if needed)
-
-This repository includes a Makefile helper that can attempt to install or
-bootstrap pip for the selected Python interpreter. It will try Python's
-`ensurepip`, fall back to common platform package managers, and finally use
-the PyPA bootstrap script as a last resort.
-
-Use the Makefile helper:
+Зависимости
+Убедитесь, что установлены зависимости из `requirements.txt`:
 
 ```bash
-make ensure-pip
+pip install --user -r requirements.txt
 ```
 
-If you prefer to install pip manually, use your OS package manager or the
-standard Python bootstrap methods (for example, `sudo apt install python3-pip`
-on Debian/Ubuntu, `brew install python` on macOS, or `python -m ensurepip`),
-then continue with the "Project setup" steps below.
-
-Project setup (install dependencies and create config)
-```bash
-# (recommended) create and activate a virtual environment first:
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Upgrade packaging tools and install project requirements:
-python3 -m pip install --upgrade pip setuptools wheel
-python3 -m pip install -r requirements.txt
-
-# Copy example environment and edit values as needed:
-cp .env.example .env
-```
-
-Windows (PowerShell):
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip setuptools wheel
-python -m pip install -r requirements.txt
-copy .env.example .env
-```
-
-If you prefer to use the Makefile helper:
-```bash
-# Attempt to ensure pip is available for the selected Python interpreter
-# (this runs the `ensure-pip` target which bootstraps pip or falls back to
-# common package managers), or run the installer which invokes it for you:
-make ensure-pip
-
-# Install development dependencies (this target calls `ensure-pip` first):
-make install-dev
-```
-
-The Makefile `ensure-pip` target will attempt to bootstrap pip via Python's
-`ensurepip` module and, if that fails, will try common platform package
-managers (apt/yum/brew) where appropriate. Use `make ensure-pip` if you want
-to only install pip; use `make install-dev` to ensure pip is present and then
-install the project's requirements.
-
-Notes:
-- Use `python3 -m pip` to ensure pip matches the interpreter you intend to use.
-- `cp .env.example .env` is a project configuration step — edit `.env` to add
-  secrets or API keys (the example file is checked in, secrets are not).
-- Virtual environments are recommended to avoid modifying the system Python.
-
-## Run
+Локальный запуск
 
 ```bash
-# STDIO transport (Claude Desktop, Cursor, etc.)
-python -m src.main --transport stdio
-
-# SSE transport (HTTP-based clients)
-python -m src.main --transport sse
+# из корня репозитория
+make run-menu
+# или
+python3 server.py --transport stdio
 ```
 
-## Package layout / imports
+Запуск в Cloud Code / через `claude mcp`
 
-This project uses the `src` package as the primary import root. The implementation
-for the MCP server lives under `src/mcp/...` and the project is intended to be run
-with the module form so relative imports resolve correctly. Example:
+1) Если `claude mcp` (или ваша среда) проксирует TTY и вы получите интерактивный терминал:
 
 ```bash
-# Run the server as a module so imports like `from .mcp...` work:
-python -m src.main --transport stdio
+# клонирует публичный репозиторий и запускает обёртку из временной папки
+claude mcp add --transport stdio pp-task-runner -- sh -c 'git clone https://gitlab.com/PavelsPolakovs/pp-task-runner-mcp.git /tmp/pp-task-runner-mcp && python /tmp/pp-task-runner-mcp/server.py'
 ```
 
-Note: A top-level `mcp/` shim (that duplicated `src/mcp`) was previously included
-for convenience during development. That shim has been removed — the project now
-uses package-local imports and the `Makefile` targets have been validated to work
-without the shim.
+2) Если `claude mcp` не предоставляет TTY (stdio используется как машинный транспорт):
 
-## Examples: start the MCP server for Copilot and Claude Code
-
-Below are concrete examples showing how to start this MCP server so it can be used by local developer tools (VS Code / Copilot) and by Claude (Desktop / Code) clients. Adjust the `cwd` path to the absolute path of this repository on your machine.
-
-### PhpStorm (for Copilot or local development in JetBrains IDEs)
-
-If you use PhpStorm (or other JetBrains IDEs) you can run the MCP server from a Run/Debug configuration or via an External Tool. Below are two options.
-
-Option A — Run/Debug Configuration (recommended when Python support is enabled):
-
-1. Open Run -> Edit Configurations...
-2. Click + -> Python configuration.
-3. Configure:
-   - Name: `Run MCP Server (stdio)`
-   - Module name: `src.main` (or Script path: leave empty if using module)
-   - Parameters: `--transport stdio`
-   - Working directory: `/absolute/path/to/my-mcp-server`
-   - Python interpreter: select your project interpreter
-4. Apply and Run the configuration. The server output will appear in the Run tool window.
-
-Option B — External Tool (works without Python run configuration):
-
-1. Open Settings/Preferences -> Tools -> External Tools.
-2. Click + to add a new external tool with values:
-   - Name: `Run MCP Server (stdio)`
-   - Program: `python`
-   - Arguments: `-m src.main --transport stdio`
-   - Working directory: `$ProjectFileDir$`
-3. Save. Run it from Tools -> External Tools -> Run MCP Server (stdio).
-
-Alternatively you can run the same command in PhpStorm's built-in terminal:
+- Установите выбор заранее через переменные окружения (non-interactive startup):
 
 ```bash
-python -m src.main --transport stdio
+# пример: заранее выбрать Greating (клонируем репозиторий и запускаем из /tmp)
+claude mcp add --transport stdio pp-task-runner -- sh -c 'git clone https://gitlab.com/PavelsPolakovs/pp-task-runner-mcp.git /tmp/pp-task-runner-mcp && MCP_SELECTED_NAME=Greating MCP_SELECTED_URL="" PYTHONPATH=/tmp/pp-task-runner-mcp/src python /tmp/pp-task-runner-mcp/server.py --transport stdio'
 ```
 
-The server will print the connection message and registered tools to the Run window or terminal; use STDIO transport for local desktop clients and Copilot integrations that support STDIO.
+- В этом режиме меню НЕ будет выводиться; активный skill будет установлен из `MCP_SELECTED_NAME`. Если позже у процесса появится TTY, можно вызвать инструмент `reopen_menu` чтобы показать меню вручную.
 
-### Claude Desktop / Claude Code
-
-For Claude Desktop you can add a configuration entry so Claude will spawn the MCP process. Example JSON to add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "my-mcp-server": {
-      "command": "python",
-      "args": ["-m", "src.main", "--transport", "stdio"],
-      "cwd": "/absolute/path/to/my-mcp-server"
-    }
-  }
-}
-```
-
-If using a Claude Code / Cloud-based Claude connector that accepts an executable and args, use the same command but prefer `--transport sse` when the connector expects HTTP/SSE:
+3) Принудительное попытка показать меню (не рекомендуется в non-TTY):
 
 ```bash
-python -m src.main --transport sse
+# опасно: может не сработать, если нет TTY. Клонируем репозиторий и пробуем запустить с форсированным меню.
+claude mcp add --transport stdio pp-task-runner -- sh -c 'git clone https://gitlab.com/PavelsPolakovs/pp-task-runner-mcp.git /tmp/pp-task-runner-mcp && MCP_FORCE_MENU=1 PYTHONPATH=/tmp/pp-task-runner-mcp/src python /tmp/pp-task-runner-mcp/server.py --transport stdio'
 ```
 
-Notes:
-- Replace `/absolute/path/to/my-mcp-server` with the repository path on your machine (for example `/home/you/projects/pp-task-runner-mcp`).
-- The STDIO transport is appropriate for local desktop clients that communicate over stdin/stdout. Use the SSE transport for clients that communicate over HTTP/SSE.
+Рекомендуемый безопасный рабочий поток
+- Для интеграции с claude mcp лучше подготовить wrapper `server.py` (он уже присутствует в репозитории). Затем:
+  - если хотите интерактивно работать — запускайте в среде, которая даёт TTY (например локально, Docker с `-it`, или k8s-под с `stdin: true` и `tty: true`).
+  - если нужно автоматическое добавление в менеджер без TTY — передавайте `MCP_SELECTED_NAME` (и при необходимости `MCP_SELECTED_URL`) в командной строке запуска.
 
+Примеры для Docker / Kubernetes
 
-## Claude Desktop Config
+Docker (локальная проверка с TTY):
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+```dockerfile
+FROM python:3.10-slim
+WORKDIR /app
+COPY . /app
+RUN pip install --no-cache-dir -r requirements.txt
+ENV PYTHONPATH=/app/src
+ENTRYPOINT ["python3", "server.py", "--transport", "stdio"]
 
-```json
-{
-  "mcpServers": {
-    "my-mcp-server": {
-      "command": "python",
-      "args": ["-m", "src.main", "--transport", "stdio"],
-      "cwd": "/absolute/path/to/my-mcp-server"
-    }
-  }
-}
+# запустить интерактивно
+docker build -t mcp-menu .
+docker run -it --rm mcp-menu
 ```
 
-## Structure
+Kubernetes (под с tty/stdin):
 
-```
-my-mcp-server/
-├── src/
-│   ├── tools/           # Tool definitions (@mcp.tool)
-│   ├── resources/       # Resource definitions (@mcp.resource)
-│   ├── prompts/         # Prompt templates (@mcp.prompt)
-│   ├── config.py        # Configuration & env vars
-│   ├── server.py        # FastMCP instance + lifespan
-│   └── main.py          # Entrypoint
-├── tests/
-├── .env.example
-├── requirements.txt
-├── pyproject.toml
-└── README.md
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mcp-menu
+spec:
+  containers:
+  - name: mcp
+    image: <your-image>
+    command: ["python3","/app/server.py","--transport","stdio"]
+    stdin: true
+    tty: true
+  restartPolicy: Never
 ```
 
-## Connection Message
+Советы по отладке
+- Если меню не появляется — проверьте, есть ли TTY: `python3 -c 'import sys; print(sys.stdin.isatty())'`.
+- Если вы используете non-interactive менеджер, проверьте, что передаёте `MCP_SELECTED_NAME` окружением.
+- Посмотрите логи процесса (`stderr/stdout`), там есть диагностические сообщения от FastMCP shim.
 
-On startup, the server prints to stderr:
-```
-✅ MCP Server connected and ready!
-```
+Если хотите, я могу добавить флаг `--skill NAME` в `server.py` (чтобы передавать выбор как аргумент), или подготовить пример Docker image / k8s manifest под ваш CI. Что предпочитаете — `--skill` флаг или Docker/manifest сейчас?
+
