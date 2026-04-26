@@ -2,7 +2,7 @@
 """Entry point for PP Task Runner.
 
 This script is intended to be the command referenced from `.claude/commands/pp-task-runner.md`.
-By default it opens the Main Menu (runs `menu_server.py` in-process so stdout JSON
+By default it opens the Main Menu (runs `src/menu_server/menu_server.py` in-process so stdout JSON
 events are visible to the caller). It also supports a `menu` subcommand for clarity.
 """
 import argparse

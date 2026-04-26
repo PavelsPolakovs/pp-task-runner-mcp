@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Simulate Claude Code running /start-pp-task-runner (Monitor approach).
 
-Runs menu_server.py as a subprocess and reads each JSON event from its stdout
-as it arrives — identical to how Claude Code's Monitor tool handles it.
+Runs the standalone menu server under `src/menu_server/menu_server.py` as a subprocess
+and reads each JSON event from its stdout as it arrives — identical to how Claude
+Code's Monitor tool handles it.
 
 Usage:
     python3 simulate.py

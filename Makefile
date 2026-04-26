@@ -3,9 +3,9 @@ PYTHONPATH=src
 
 .PHONY: up dev test
 
-# Simulate Claude Code: spawns server.py, opens the browser menu, handles events
+# Simulate Claude Code: spawns src/menu_server/menu_server.py, opens the browser menu, handles events
 up:
-	@echo "Starting simulator (spawns menu_server.py and handles events)…"
+	@echo "Starting simulator (spawns src/menu_server/menu_server.py and handles events)…"
 	@$(PYTHON) simulate.py
 
 # Open the MCP Inspector (browser GUI to call tools interactively)
