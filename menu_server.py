@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """Standalone menu HTTP server. Prints JSON events to stdout (one line each).
-Designed to be run via Monitor so Claude Code receives events as notifications."""
+Designed to be run via Monitor so Claude Code receives events as notifications.
+
+Usage:
+    python3 menu_server.py              # shows the default (main) menu
+    python3 menu_server.py --menu qa    # shows the QA/testing menu
+"""
+import argparse
 import json
+import os
 import socket
 import sys
 import threading
@@ -9,9 +16,9 @@ import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-SKILLS = {
-    "Greating": "**** Hello! Welcome to MCP! ****",
-}
+# Load menus from the package so task_config.json is the single source of truth.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+from menu_mcp.constants import DEFAULT_MENU, MENUS  # noqa: E402
 
 _TIMEOUT = 300
 _done = threading.Event()
@@ -33,7 +40,7 @@ def _build_html(skills: dict) -> str:
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Select Skill — Claude Code</title>
+<title>PP Task Runner — Main Menu</title>
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
 body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;
@@ -56,7 +63,7 @@ h1{{font-size:1.1em;color:#555;margin-bottom:20px;font-weight:500}}
 </head>
 <body>
 <div class="card">
-  <h1>Select a skill for Claude Code</h1>
+  <h1>PP Task Runner — Main Menu</h1>
   {skill_buttons}
   <button class="exit-btn" onclick="doExit()">Exit</button>
   <div id="status"></div>
@@ -90,64 +97,79 @@ def _emit(event: dict):
     print(json.dumps(event), flush=True)
 
 
-class _Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == "/":
-            body = _build_html(SKILLS).encode()
+def _make_handler(skills: dict):
+    class _Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/":
+                body = _build_html(skills).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+        def do_POST(self):
+            if self.path != "/action":
+                self.send_response(404)
+                self.end_headers()
+                return
+
+            length = int(self.headers.get("Content-Length", 0))
+            payload = json.loads(self.rfile.read(length))
+            action = payload.get("action", "")
+            name = payload.get("name", "")
+
+            if action == "select" and name in skills:
+                self._send_json({"feedback": "✓ Sent to Claude"})
+                _emit({"action": "greet", "name": name, "message": skills[name]})
+
+            elif action == "exit":
+                self._send_json({"feedback": "Goodbye!"})
+                _emit({"action": "exit"})
+                threading.Thread(
+                    target=lambda: (time.sleep(0.3), _done.set()), daemon=True
+                ).start()
+
+            elif action == "close":
+                self.send_response(200)
+                self.end_headers()
+                _emit({"action": "close"})
+                _done.set()
+
+            else:
+                self.send_response(400)
+                self.end_headers()
+
+        def _send_json(self, data: dict):
+            body = json.dumps(data).encode()
             self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
-        else:
-            self.send_response(404)
-            self.end_headers()
 
-    def do_POST(self):
-        if self.path != "/action":
-            self.send_response(404)
-            self.end_headers()
-            return
+        def log_message(self, *_):
+            pass
 
-        length = int(self.headers.get("Content-Length", 0))
-        payload = json.loads(self.rfile.read(length))
-        action = payload.get("action", "")
-        name = payload.get("name", "")
-
-        if action == "select" and name in SKILLS:
-            self._send_json({"feedback": "✓ Sent to Claude"})
-            _emit({"action": "greet", "name": name, "message": SKILLS[name]})
-
-        elif action == "exit":
-            self._send_json({"feedback": "Goodbye!"})
-            _emit({"action": "exit"})
-            threading.Thread(target=lambda: (time.sleep(0.3), _done.set()), daemon=True).start()
-
-        elif action == "close":
-            self.send_response(200)
-            self.end_headers()
-            _emit({"action": "close"})
-            _done.set()
-
-        else:
-            self.send_response(400)
-            self.end_headers()
-
-    def _send_json(self, data: dict):
-        body = json.dumps(data).encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, *_):
-        pass
+    return _Handler
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="PP Task Runner standalone menu server")
+    parser.add_argument(
+        "--menu",
+        default=DEFAULT_MENU,
+        help=f"Menu name to display (default: {DEFAULT_MENU!r}). Available: {', '.join(MENUS)}",
+    )
+    args = parser.parse_args()
+
+    skills = MENUS.get(args.menu, MENUS.get(DEFAULT_MENU, {}))
+
     port = _free_port()
-    server = ThreadingHTTPServer(("127.0.0.1", port), _Handler)
+    server = ThreadingHTTPServer(("127.0.0.1", port), _make_handler(skills))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     webbrowser.open(f"http://127.0.0.1:{port}")
     _done.wait(timeout=_TIMEOUT)

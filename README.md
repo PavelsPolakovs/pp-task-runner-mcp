@@ -15,6 +15,8 @@ pip install --user -r requirements.txt
 
 ## Installation in Claude Code
 
+### 1. Register the MCP server
+
 Add the server with `claude mcp add`. Two options depending on whether you have a local clone:
 
 **Local clone (recommended):**
@@ -41,11 +43,25 @@ claude mcp list
 
 You should see `pp-task-runner` listed with status `connected`.
 
+### 2. Install the Claude Code skill (one-time per project)
+
+The server ships with a built-in installer that writes the `/pp-task-runner` slash command into your project:
+
+```bash
+python3 /path/to/pp-task-runner-mcp/server.py install
+# or for a specific project directory:
+python3 /path/to/pp-task-runner-mcp/server.py install --project-dir /path/to/your/project
+```
+
+This creates `.claude/commands/pp-task-runner.md` in the project. Restart Claude Code once to pick up the new command.
+
+> **Why is this needed?** The MCP server embeds its usage instructions via the MCP `instructions` field (Claude Code reads these on connect). The skill file adds the `/pp-task-runner` slash command trigger. Without it you can still call `open_menu` by name, but `/pp-task-runner` won't be available as a shortcut.
+
 ## Starting the Menu
 
-Once the MCP server is installed, type `/start-pp-task-runner` in Claude Code.
+Once both steps above are done, type `/pp-task-runner` in Claude Code.
 
-Claude Code calls the `open_menu` tool, which starts a local HTTP server on a random free port and opens your default browser automatically. Select a skill in the browser — Claude Code receives the event and responds.
+Claude Code calls the `open_menu` tool, which starts a local HTTP server on a random free port and opens your default browser automatically. Select a task in the browser — Claude Code receives the event and responds.
 
 ## Browser UI
 
@@ -59,7 +75,7 @@ The local HTTP server shuts down automatically after any of the following:
 
 | Event | Browser shows | Claude Code receives |
 |---|---|---|
-| Skill button clicked | "✓ Done" | `{"action": "greet", "name": "…", "message": "…"}` |
+| Task button clicked | "✓ Done" | `{"action": "greet", "name": "…", "message": "…"}` |
 | Exit button clicked | "Closing…" | `{"action": "exit"}` |
 | Tab / window closed | — | `{"action": "close"}` |
 | 5-minute timeout | — | `{"action": "timeout"}` |
@@ -68,25 +84,25 @@ Claude Code loops on `open_menu` calls until it receives `exit`, `close`, or `ti
 
 ## Configuration
 
-### Adding skills
+### Adding tasks
 
-Edit `src/menu_mcp/constants.py`:
+Edit `src/menu_mcp/constants.py` (or provide `task_config.json` in the repo root):
 
 ```python
-SKILLS = {
-    "My Skill": "Description shown under the button",
-    "Another Skill": "Does something else",
+TASKS = {
+    "My Task": "Description shown under the button",
+    "Another Task": "Does something else",
 }
 ```
 
-Each key becomes a button label; the value is shown as a subtitle and sent to Claude Code as the greeting message when selected.
+Each key becomes a button label; the value is shown as a subtitle and sent to Claude Code as the message when selected.
 
 ### Environment variables
 
 | Variable | Purpose |
 |---|---|
-| `MCP_SELECTED_NAME` | Pre-select a skill on startup without opening the browser |
-| `MCP_SELECTED_URL` | Optional URL stored alongside the pre-selected skill |
+| `MCP_SELECTED_NAME` | Pre-select a task on startup without opening the browser |
+| `MCP_SELECTED_URL` | Optional URL stored alongside the pre-selected task |
 
 Pre-selection example (useful in non-interactive or CI environments):
 
@@ -100,9 +116,9 @@ claude mcp add --transport stdio pp-task-runner -- sh -c \
 | Tool | Description |
 |---|---|
 | `open_menu` | Open the browser menu or wait for the next user action |
-| `select_skill` | Activate a skill by name without opening the browser |
-| `get_active_skill` | Return the currently active skill name and description |
-| `list_skills` | Return all available skills as a JSON array |
+| `select_skill` | Activate a task by name without opening the browser |
+| `get_active_skill` | Return the currently active task name and description |
+| `list_skills` | Return all available tasks as a JSON array |
 | `update` | Pull latest changes from the remote repo (`git pull`) |
 
 After calling `update`, reconnect the server in Claude Code: `/mcp` → **Reconnect** `pp-task-runner`.
@@ -179,7 +195,7 @@ pp-task-runner-mcp/
 ├── simulate.py            Claude Code simulator — spawns server.py and drives it via MCP
 ├── dev_server.py          Module-level FastMCP instance for `mcp dev`
 ├── menu_server.py         Standalone variant (Monitor-based, no MCP required)
-├── Makefile               run-menu / dev / test targets
+├── Makefile               up / dev / test targets
 ├── requirements.txt       Runtime Python dependencies
 ├── requirements-dev.txt   Adds pytest for testing
 ├── pytest.ini             Configures testpaths and pythonpath
@@ -205,8 +221,8 @@ pip install -r requirements.txt
 # Install dev dependencies (includes pytest)
 pip install -r requirements-dev.txt
 
-# Run the menu locally (stdio transport)
-make run-menu
+# Run the menu locally (simulate the menu flow)
+make up
 # or
 python3 server.py --transport stdio
 ```

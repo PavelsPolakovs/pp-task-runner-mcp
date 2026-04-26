@@ -16,7 +16,7 @@ def _build_html(skills: dict) -> str:
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Select Skill — Claude Code</title>
+<title>PP Task Runner — Main Menu</title>
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
 body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;
@@ -39,7 +39,7 @@ h1{{font-size:1.1em;color:#555;margin-bottom:20px;font-weight:500}}
 </head>
 <body>
 <div class="card">
-  <h1>Select a skill for Claude Code</h1>
+  <h1>PP Task Runner — Main Menu</h1>
   {skill_buttons}
   <button class="exit-btn" onclick="doExit()">Exit</button>
   <div id="status"></div>
