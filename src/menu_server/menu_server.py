@@ -8,6 +8,7 @@ Usage:
 """
 import argparse
 import json
+import html
 import os
 import socket
 import sys
@@ -31,67 +32,93 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
-def _build_html(skills: dict) -> str:
-    skill_buttons = "".join(
-        f'<button class="skill-btn" onclick="pick(\'{name}\')">'
-        f"<strong>{name}</strong><span>{desc}</span></button>"
-        for name, desc in skills.items()
+def _menu_styles() -> str:
+    """Return the CSS used by the menu page."""
+    return (
+        "*{box-sizing:border-box;margin:0;padding:0}"
+        "body{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;background:#f5f5f5;"
+        "display:flex;align-items:center;justify-content:center;min-height:100vh}"
+        ".card{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.1);"
+        "padding:32px;width:100%;max-width:480px}"
+        "h1{font-size:1.1em;color:#555;margin-bottom:20px;font-weight:500}"
+        ".skill-btn{display:block;width:100%;padding:14px 16px;margin:8px 0;"
+        "border:1px solid #e0e0e0;border-radius:8px;background:#fff;"
+        "cursor:pointer;text-align:left;font-size:.95em;transition:.15s}"
+        ".skill-btn:hover{background:#f0f7ff;border-color:#4a9eff}"
+        ".skill-btn strong{display:block}"
+        ".skill-btn span{display:block;font-size:.78em;color:#999;margin-top:3px}"
+        ".exit-btn{display:block;width:100%;padding:12px 16px;margin-top:16px;"
+        "border:1px solid #ffcdd2;border-radius:8px;background:#fff;"
+        "cursor:pointer;text-align:center;font-size:.9em;color:#e53935;transition:.15s}"
+        ".exit-btn:hover{background:#ffebee}"
+        "#status{margin-top:16px;font-size:.85em;color:#4a9eff;min-height:1.2em;text-align:center}"
     )
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>PP Task Runner — Main Menu</title>
-<style>
-*{{box-sizing:border-box;margin:0;padding:0}}
-body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;
-     display:flex;align-items:center;justify-content:center;min-height:100vh}}
-.card{{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.1);
-       padding:32px;width:100%;max-width:480px}}
-h1{{font-size:1.1em;color:#555;margin-bottom:20px;font-weight:500}}
-.skill-btn{{display:block;width:100%;padding:14px 16px;margin:8px 0;
-            border:1px solid #e0e0e0;border-radius:8px;background:#fff;
-            cursor:pointer;text-align:left;font-size:.95em;transition:.15s}}
-.skill-btn:hover{{background:#f0f7ff;border-color:#4a9eff}}
-.skill-btn strong{{display:block}}
-.skill-btn span{{display:block;font-size:.78em;color:#999;margin-top:3px}}
-.exit-btn{{display:block;width:100%;padding:12px 16px;margin-top:16px;
-           border:1px solid #ffcdd2;border-radius:8px;background:#fff;
-           cursor:pointer;text-align:center;font-size:.9em;color:#e53935;transition:.15s}}
-.exit-btn:hover{{background:#ffebee}}
-#status{{margin-top:16px;font-size:.85em;color:#4a9eff;min-height:1.2em;text-align:center}}
-</style>
-</head>
-<body>
-<div class="card">
-  <h1>PP Task Runner — Main Menu</h1>
-  {skill_buttons}
-  <button class="exit-btn" onclick="doExit()">Exit</button>
-  <div id="status"></div>
-</div>
-<script>
-async function post(body){{
-  const r=await fetch('/action',{{method:'POST',
-    headers:{{'Content-Type':'application/json'}},body:JSON.stringify(body)}});
-  return r.json();
-}}
-async function pick(name){{
-  document.getElementById('status').textContent='Running '+name+'…';
-  try{{
-    const d=await post({{action:'select',name}});
-    document.getElementById('status').textContent=d.feedback||'✓ Done';
-  }}catch{{document.getElementById('status').textContent='Error';}}
-}}
-async function doExit(){{
-  document.getElementById('status').textContent='Closing…';
-  try{{await post({{action:'exit',name:''}});}}catch{{}}
-  window.close();
-}}
-window.addEventListener('beforeunload',()=>(
-  navigator.sendBeacon('/action',JSON.stringify({{action:'close',name:''}}))));
-</script>
-</body>
-</html>"""
+
+
+def _render_skill_button(name: str, description: str) -> str:
+    """Render a single skill button.
+
+    Uses a data-name attribute (HTML-escaped) and escapes visible text.
+    """
+    label_html = html.escape(name)
+    desc_html = html.escape(description)
+    data_name = html.escape(name, quote=True)
+    return (
+        f'<button class="skill-btn" data-name="{data_name}" '
+        f'onclick="pick(this.dataset.name)">'  # pick will read dataset
+        f"<strong>{label_html}</strong><span>{desc_html}</span></button>"
+    )
+
+
+def _render_exit_button() -> str:
+    return '<button class="exit-btn" onclick="doExit()">Exit</button>'
+
+
+def _render_status_div() -> str:
+    return '<div id="status"></div>'
+
+
+def _render_script() -> str:
+    """Return the JavaScript for the page as a single string."""
+    return (
+        "async function post(body){"
+        "const r=await fetch('/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});"
+        "return r.json();}"
+        "async function pick(name){"
+        "document.getElementById('status').textContent='Running '+name+'…';"
+        "try{const d=await post({action:'select',name});document.getElementById('status').textContent=d.feedback||'✓ Done';}"
+        "catch{document.getElementById('status').textContent='Error';}}"
+        "async function doExit(){document.getElementById('status').textContent='Closing…';"
+        "try{await post({action:'exit',name:''});}catch{}window.close();}"
+        "window.addEventListener('beforeunload',()=>navigator.sendBeacon('/action',JSON.stringify({action:'close',name:''})));"
+    )
+
+
+def _build_html(skills: dict) -> str:
+    skill_buttons = "".join(_render_skill_button(name, desc) for name, desc in skills.items())
+    html_parts = []
+    html_parts.append("<!DOCTYPE html>")
+    html_parts.append("<html lang=\"en\">")
+    html_parts.append("<head>")
+    html_parts.append("<meta charset=\"utf-8\">")
+    html_parts.append("<title>PP Task Runner — Main Menu</title>")
+    html_parts.append("<style>")
+    html_parts.append(_menu_styles())
+    html_parts.append("</style>")
+    html_parts.append("</head>")
+    html_parts.append("<body>")
+    html_parts.append('<div class="card">')
+    html_parts.append("  <h1>PP Task Runner — Main Menu</h1>")
+    html_parts.append(skill_buttons)
+    html_parts.append(_render_exit_button())
+    html_parts.append(_render_status_div())
+    html_parts.append("</div>")
+    html_parts.append("<script>")
+    html_parts.append(_render_script())
+    html_parts.append("</script>")
+    html_parts.append("</body>")
+    html_parts.append("</html>")
+    return "\n".join(html_parts)
 
 
 def _emit(event: dict):
