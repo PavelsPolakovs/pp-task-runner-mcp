@@ -1,8 +1,13 @@
 {
-  "tasks": [
-    {"name": "Run tests", "description": "Execute test suite (pytest)"},
-    {"name": "Lint code", "description": "Run linters and static analysis"},
-    {"name": "Show status", "description": "Display current MCP status"}
-  ]
+  "default_menu": "main",
+  "menus": {
+    "main": [
+      {"name": "Greating", "description": "**** Hello! Welcome to MCP! ****"}
+    ],
+    "qa": [
+      {"name": "Run tests",    "description": "Execute test suite (pytest)"},
+      {"name": "Lint code",    "description": "Run linters and static analysis"},
+      {"name": "make qa-check","description": "Run full QA checks (lint + tests)"}
+    ]
+  }
 }
-

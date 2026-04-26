@@ -15,6 +15,8 @@ pip install --user -r requirements.txt
 
 ## Installation in Claude Code
 
+### 1. Register the MCP server
+
 Add the server with `claude mcp add`. Two options depending on whether you have a local clone:
 
 **Local clone (recommended):**
@@ -41,9 +43,23 @@ claude mcp list
 
 You should see `pp-task-runner` listed with status `connected`.
 
+### 2. Install the Claude Code skill (one-time per project)
+
+The server ships with a built-in installer that writes the `/pp-task-runner` slash command into your project:
+
+```bash
+python3 /path/to/pp-task-runner-mcp/server.py install
+# or for a specific project directory:
+python3 /path/to/pp-task-runner-mcp/server.py install --project-dir /path/to/your/project
+```
+
+This creates `.claude/commands/pp-task-runner.md` in the project. Restart Claude Code once to pick up the new command.
+
+> **Why is this needed?** The MCP server embeds its usage instructions via the MCP `instructions` field (Claude Code reads these on connect). The skill file adds the `/pp-task-runner` slash command trigger. Without it you can still call `open_menu` by name, but `/pp-task-runner` won't be available as a shortcut.
+
 ## Starting the Menu
 
-Once the MCP server is installed, type `/start-pp-task-runner` in Claude Code.
+Once both steps above are done, type `/pp-task-runner` in Claude Code.
 
 Claude Code calls the `open_menu` tool, which starts a local HTTP server on a random free port and opens your default browser automatically. Select a task in the browser — Claude Code receives the event and responds.
 
