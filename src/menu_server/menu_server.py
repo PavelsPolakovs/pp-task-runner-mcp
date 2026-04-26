@@ -52,6 +52,8 @@ def _make_handler(tasks: dict):
                 body = render_menu_html(options, menu_name).encode()
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                # Allow CORS requests from the launcher (data: origin)
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
@@ -94,6 +96,7 @@ def _make_handler(tasks: dict):
 
             elif action == "close":
                 self.send_response(200)
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 _emit({"action": "close"})
                 _done.set()
@@ -101,6 +104,7 @@ def _make_handler(tasks: dict):
             elif action == "navigating":
                 # Ignore ephemeral beacons sent during in-page navigation.
                 self.send_response(200)
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
 
             else:
@@ -111,9 +115,17 @@ def _make_handler(tasks: dict):
             body = json.dumps(data).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+
+        def do_OPTIONS(self):
+            self.send_response(200)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.end_headers()
 
         def log_message(self, *_):
             pass
@@ -144,7 +156,58 @@ def main(argv: list | None = None) -> int:
     port = _free_port()
     server = ThreadingHTTPServer(("127.0.0.1", port), _make_handler(tasks))
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    webbrowser.open(f"http://127.0.0.1:{port}")
+    # Open via a small launcher page so the real menu is opened in a
+    # script-created window. That makes the child window eligible to be
+    # closed programmatically by the Exit button in most browsers.
+    try:
+        from urllib.parse import quote
+
+        # Build a data: URL launcher that polls the server and opens the
+        # real menu in a script-created window once ready. This avoids a
+        # race where the browser requests /launch before the server is
+        # accepting connections and shows a DNS/connection error page.
+        launch_html = ('<!doctype html><meta charset=utf-8>\n'
+                       '<script>\n'
+                       '  (function(){\n'
+                       '    const port = %d;\n'
+                       '    const menu = %s;\n'
+                       '    function tryOpen(){\n'
+                       "      fetch('http://127.0.0.1:'+port+'/?menu='+encodeURIComponent(menu)).then(()=>{\n"
+                       "        try{\n"
+                       "          var url = 'http://127.0.0.1:'+port+'/?menu='+encodeURIComponent(menu);\n"
+                       "          var w = window.open(url,'_blank','width=900,height=700');\n"
+                       "          if(w){ try{w.focus()}catch(e){}; try{window.close()}catch(e){}; }\n"
+                       "        }catch(e){}\n"
+                       "      }).catch(()=>setTimeout(tryOpen,200));\n"
+                       '    }\n'
+                       '    tryOpen();\n'
+                       '  })();\n'
+                       '</script>') % (port, json.dumps(args.menu or ''))
+        data_url = 'data:text/html;charset=utf-8,' + quote(launch_html)
+    except Exception:
+        data_url = f"http://127.0.0.1:{port}/launch?menu={quote(args.menu or '')}"
+    # Print helpful URLs so a developer can open the menu manually if the
+    # system's default browser does not launch automatically.
+    # Allow switching between 'launcher' and 'direct' via environment
+    # variable MENU_OPEN_MODE. Default to direct to open the HTTP URL
+    # immediately (less race-prone on many systems).
+    mode = os.environ.get("MENU_OPEN_MODE", "direct").lower()
+    try:
+        if mode == "direct":
+            direct_url = f"http://127.0.0.1:{port}/?menu={args.menu}"
+            print(f"Opening direct menu URL: {direct_url}", flush=True)
+            webbrowser.open(direct_url)
+        else:
+            print(f"Opening launcher (mode=launcher). Launcher URL shown below.", flush=True)
+            print(f"Menu launcher URL (open in browser if it didn't appear): {data_url}", flush=True)
+            print(f"Direct menu URL: http://127.0.0.1:{port}/?menu={args.menu}", flush=True)
+            webbrowser.open(data_url)
+    except Exception:
+        try:
+            print(f"Menu launcher URL: {data_url}", flush=True)
+            print(f"Direct menu URL: http://127.0.0.1:{port}/?menu={args.menu}", flush=True)
+        except Exception:
+            pass
     _done.wait(timeout=_TIMEOUT)
     server.shutdown()
     return 0

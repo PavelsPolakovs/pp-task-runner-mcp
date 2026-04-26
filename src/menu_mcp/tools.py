@@ -36,11 +36,50 @@ def register_tools(mcp) -> None:
                 server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
                 _menu.server = server
                 threading.Thread(target=server.serve_forever, daemon=True).start()
-                # Open a small launcher page that will programmatically open
-                # the real menu in a script-created window. That allows the
-                # menu page to be closed programmatically via window.close().
-                launch_url = f"http://127.0.0.1:{port}/launch?menu={quote(menu_name or '')}"
-                webbrowser.open(launch_url)
+                # Create an inline launcher page (data: URL) that polls the
+                # local server and opens the real menu in a script-created
+                # window once the server is ready. Using a data: URL avoids
+                # the race where the browser navigates to /launch before the
+                # server starts and shows "page can't be found".
+                launch_html = ('<!doctype html><meta charset=utf-8>\n'
+                               '<script>\n'
+                               '  (function(){\n'
+                               '    const port = %d;\n'
+                               '    const menu = %s;\n'
+                               '    function tryOpen(){\n'
+                               "      fetch('http://127.0.0.1:'+port+'/?menu='+encodeURIComponent(menu)).then(()=>{\n"
+                               "        try{\n"
+                               "          var url = 'http://127.0.0.1:'+port+'/?menu='+encodeURIComponent(menu);\n"
+                               "          var w = window.open(url,'_blank','width=900,height=700');\n"
+                               "          if(w){ try{w.focus()}catch(e){}; try{window.close()}catch(e){}; }\n"
+                               "        }catch(e){}\n"
+                               "      }).catch(()=>setTimeout(tryOpen,200));\n"
+                               '    }\n'
+                               '    tryOpen();\n'
+                               '  })();\n'
+                               '</script>') % (port, json.dumps(menu_name or ""))
+                data_url = 'data:text/html;charset=utf-8,' + quote(launch_html)
+                # Allow switching between 'launcher' (data: URL polling) and
+                # 'direct' (open the HTTP URL immediately). Default to
+                # direct mode to match user preference for reliable opening.
+                mode = os.environ.get("MENU_OPEN_MODE", "direct").lower()
+                try:
+                    if mode == "direct":
+                        direct_url = f"http://127.0.0.1:{port}/?menu={menu_name}"
+                        print(f"Opening direct menu URL: {direct_url}", flush=True)
+                        webbrowser.open(direct_url)
+                    else:
+                        print(f"Opening launcher (mode=launcher). Launcher URL shown below.", flush=True)
+                        print(f"Menu launcher URL (open in browser if it didn't appear): {data_url}", flush=True)
+                        print(f"Direct menu URL: http://127.0.0.1:{port}/?menu={menu_name}", flush=True)
+                        webbrowser.open(data_url)
+                except Exception:
+                    # If webbrowser.open fails for any reason just print URLs
+                    try:
+                        print(f"Menu launcher URL: {data_url}", flush=True)
+                        print(f"Direct menu URL: http://127.0.0.1:{port}/?menu={menu_name}", flush=True)
+                    except Exception:
+                        pass
 
         try:
             event = _menu.events.get(timeout=_MENU_TIMEOUT)
