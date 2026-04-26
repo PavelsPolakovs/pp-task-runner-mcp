@@ -1,0 +1,18 @@
+{
+  "default_menu": "main",
+  "menus": {
+    "main": [
+      {"name": "Task lifecycle", "description": "MENU:task_lifecycle"}
+    ],
+    "task_lifecycle": [
+      {"name": "Create issue", "description": "Hi, provide plan"},
+      {"name": "Back", "description": "MENU:main"}
+    ],
+    "qa": [
+      {"name": "Run tests",    "description": "Execute test suite (pytest)"},
+      {"name": "Lint code",    "description": "Run linters and static analysis"},
+      {"name": "make qa-check","description": "Run full QA checks (lint + tests)"}
+    ]
+  }
+}
+

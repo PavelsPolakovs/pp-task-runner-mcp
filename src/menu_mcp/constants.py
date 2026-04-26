@@ -29,7 +29,13 @@ import json
 import os
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PACKAGE_TASK_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "task_config.json")
 _TASK_CONFIG = os.path.join(_REPO_ROOT, "task_config.json")
+
+# Prefer package-local config (src/menu_mcp/task_config.json) when available;
+# fall back to repository-root task_config.json for backwards compatibility.
+if os.path.exists(_PACKAGE_TASK_CONFIG):
+    _TASK_CONFIG = _PACKAGE_TASK_CONFIG
 
 _FALLBACK: dict[str, dict[str, str]] = {
     "main": {"Greating": "**** Hello! Welcome to MCP! ****"}

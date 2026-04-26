@@ -86,7 +86,7 @@ Claude Code loops on `open_menu` calls until it receives `exit`, `close`, or `ti
 
 ### Adding tasks
 
-Edit `src/menu_mcp/constants.py` (or provide `task_config.json` in the repo root):
+Edit `src/menu_mcp/task_config.json` (or `src/menu_mcp/constants.py` to configure MENU definitions):
 
 ```python
 TASKS = {
