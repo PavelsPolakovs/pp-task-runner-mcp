@@ -15,7 +15,8 @@ import subprocess
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
-MENU_SERVER = os.path.join(REPO_ROOT, "src", "menu_server", "menu_server.py")
+# Run menu server as a module so package-relative imports work reliably.
+MENU_MODULE = "menu_server"
 
 
 def handle(event: dict) -> None:
@@ -33,11 +34,14 @@ def handle(event: dict) -> None:
 def main() -> None:
     print("pp-task-runner simulator — press Ctrl+C to quit\n")
 
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.path.join(REPO_ROOT, "src")
     proc = subprocess.Popen(
-        [sys.executable, MENU_SERVER],
+        [sys.executable, "-m", MENU_MODULE],
         stdout=subprocess.PIPE,
         text=True,
         bufsize=1,
+        env=env,
     )
 
     try:

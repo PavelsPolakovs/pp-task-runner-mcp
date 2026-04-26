@@ -124,8 +124,8 @@ def register_tools(mcp) -> None:
           {"action": "exit"}
           {"action": "close"}
         """
-        menu_server = os.path.join(_REPO_DIR, "src", "menu_server", "menu_server.py")
-        cmd = f"python3 {menu_server}"
+        # Run the menu server as a package so package-relative imports work:
+        cmd = f"PYTHONPATH={_REPO_DIR}/src python3 -m menu_server"
         if menu:
             cmd += f" --menu {menu}"
         return cmd
