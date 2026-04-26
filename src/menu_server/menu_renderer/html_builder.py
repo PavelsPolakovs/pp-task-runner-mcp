@@ -18,6 +18,11 @@ def _render_status_div() -> str:
 
 
 def _render_script() -> str:
+    # Render a compact JS runtime that posts actions back to the server and
+    # provides a robust doExit implementation. We avoid emitting a
+    # beforeunload beacon here (it caused premature shutdowns during
+    # navigation) but include a sendBeacon('close') inside doExit as a
+    # backup if the fetch is aborted.
     return (
         "async function post(body){"
         "const r=await fetch('/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});"
@@ -29,11 +34,11 @@ def _render_script() -> str:
         "document.getElementById('status').textContent=d.feedback||'✓ Done';}"
         "catch{document.getElementById('status').textContent='Error';}}"
         "async function doExit(){document.getElementById('status').textContent='Closing…';"
-        "try{await post({action:'exit',name:''});}catch{}window.close();}"
-        # Do not automatically send a close beacon on beforeunload. Closing
-        # the page during in-menu navigation previously caused the server to
-        # shutdown prematurely. The server will still stop on explicit
-        # exit/close actions posted by the client.
+        "try{await post({action:'exit',name:''});}catch{}"
+        "try{navigator.sendBeacon('/action',JSON.stringify({action:'close',name:''}));}catch{}"
+        "try{window.open('','_self'); window.close(); return;}catch{}"
+        "try{window.close(); return;}catch{}"
+        "window.location.href='about:blank';}"
     )
 
 

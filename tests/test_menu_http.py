@@ -60,11 +60,12 @@ class TestMenuHTTP:
             t, results = _open_menu_in_thread(mcp_app)
             port = _wait_for_server()
 
-            # webbrowser.open should be invoked with the ephemeral server URL
+            # webbrowser.open should be invoked; allow either a direct URL or
+            # our data: launcher URL used to avoid races when starting the
+            # server (see implementation notes).
             assert mock_open.called
             called_url = mock_open.call_args[0][0]
-            # allow either the root URL or the new launcher path
-            assert called_url.startswith(f"http://127.0.0.1:{port}"), called_url
+            assert called_url.startswith(f"http://127.0.0.1:{port}") or called_url.startswith("data:text/html"), called_url
 
             # shut down cleanly
             _post(port, {"action": "exit", "name": ""})

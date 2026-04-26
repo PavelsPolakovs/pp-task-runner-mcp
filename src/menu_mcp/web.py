@@ -123,6 +123,10 @@ def make_handler(all_menus: dict, menu_state) -> type:
                 body = _build_html(options, menu_name).encode()
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                # Allow cross-origin requests from data: URLs used by the
+                # launcher. The launcher polls the local server from origin
+                # 'null' (data:) so enable a permissive CORS header here.
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
@@ -137,15 +141,21 @@ def make_handler(all_menus: dict, menu_state) -> type:
     try{
       var menu = new URLSearchParams(location.search).get('menu')||'';
       var url = '/' + (menu?('?menu='+encodeURIComponent(menu)):'');
-      var w = window.open(url, '_blank');
+      // Open a sized popup window (width/height) to encourage the browser
+      // to create a new window rather than a tab; this increases the chance
+      // that the child window can be closed programmatically by the Exit
+      // button. Do not set 'noopener' so the opener relationship is kept.
+      var w = window.open(url, '_blank', 'width=900,height=700');
+      if (w) try{ w.focus(); }catch(e){}
       // give the child a moment to open then try to close this launcher
-      setTimeout(function(){ try{ window.close(); }catch(e){} }, 50);
+      setTimeout(function(){ try{ window.close(); }catch(e){} }, 200);
     }catch(e){/* ignore */}
   })();
 </script>"""
                 launch_html = launch_html_str.encode()
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.send_header("Content-Length", str(len(launch_html)))
                 self.end_headers()
                 self.wfile.write(launch_html)
@@ -188,6 +198,7 @@ def make_handler(all_menus: dict, menu_state) -> type:
             elif action == "close":
                 # sendBeacon — no response body needed
                 self.send_response(200)
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 menu_state.events.put({"action": "close"})
                 self._schedule_shutdown()
@@ -196,6 +207,7 @@ def make_handler(all_menus: dict, menu_state) -> type:
                 # client is navigating between pages on the same menu server;
                 # ignore this and return 200 so the beacon doesn't cause a 400.
                 self.send_response(200)
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
 
             else:
@@ -206,9 +218,18 @@ def make_handler(all_menus: dict, menu_state) -> type:
             body = json.dumps(data).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+
+        def do_OPTIONS(self):
+            # Handle preflight CORS requests from the launcher (data: origin)
+            self.send_response(200)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.end_headers()
 
         def _schedule_shutdown(self):
             def _do():
