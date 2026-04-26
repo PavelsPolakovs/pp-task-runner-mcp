@@ -18,8 +18,8 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # Load menus from the package so task_config.json is the single source of truth.
-# When this file lives under src/menu_server/, ensure repo/src is on sys.path.
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# When running the package (`python -m menu_server`) or with PYTHONPATH=src this
+# import will resolve normally.
 from menu_mcp.constants import DEFAULT_MENU, MENUS  # noqa: E402
 
 _TIMEOUT = 300
@@ -100,14 +100,23 @@ def _make_handler(tasks: dict):
     return _Handler
 
 
-if __name__ == "__main__":
+def main(argv: list | None = None) -> int:
+    """Run the standalone menu HTTP server.
+
+    Args:
+        argv: Optional list of command-line arguments (for testing). If None,
+              uses sys.argv.
+
+    Returns:
+        Exit code (0 on success).
+    """
     parser = argparse.ArgumentParser(description="PP Task Runner standalone menu server")
     parser.add_argument(
         "--menu",
         default=DEFAULT_MENU,
         help=f"Menu name to display (default: {DEFAULT_MENU!r}). Available: {', '.join(MENUS)}",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     tasks = MENUS.get(args.menu, MENUS.get(DEFAULT_MENU, {}))
 
@@ -117,5 +126,9 @@ if __name__ == "__main__":
     webbrowser.open(f"http://127.0.0.1:{port}")
     _done.wait(timeout=_TIMEOUT)
     server.shutdown()
-    sys.exit(0)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
 

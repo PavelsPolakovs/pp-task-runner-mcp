@@ -6,10 +6,9 @@ Usage:
 This delegates to the existing module implementation so behaviour remains
 identical to running the script directly.
 """
-import runpy
+from menu_server.menu_server import main
 
 
 if __name__ == "__main__":
-    # Execute the module so that package-relative imports work correctly.
-    runpy.run_module("menu_server.menu_server", run_name="__main__")
+    raise SystemExit(main())
 
