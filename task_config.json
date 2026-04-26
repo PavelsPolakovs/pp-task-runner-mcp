@@ -2,6 +2,7 @@
   "default_menu": "main",
   "menus": {
     "main": [
+      {"name": "Greating", "description": "**** Hello! Welcome to MCP! ****"},
       {"name": "Task lifecycle", "description": "MENU:task_lifecycle"}
     ],
     "task_lifecycle": [

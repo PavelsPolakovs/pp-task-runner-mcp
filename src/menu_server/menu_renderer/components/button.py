@@ -1,29 +1,14 @@
+"""Compatibility shim — re-export shared button rendering from menu_mcp.
 
-"""Button rendering helpers.
-
-Contains the `_render_button` helper extracted from `html_builder.py` so
-that button-specific rendering can live in its own module.
+The original implementation lived here; it has been moved to
+`src/menu_mcp/menu_renderer/components/button.py` so `menu_mcp` is the
+single source of truth for UI components. Keep a tiny shim here so code
+that still imports the old module path keeps working until the directory
+is removed manually.
 """
-import html
+from menu_mcp.menu_renderer.components.button import _render_button
 
-
-def _render_button(name: str, description: str, *, onclick: str = "pick(this.dataset.name)", css_class: str = "btn", include_data_name: bool = True) -> str:
-    """Render a generic button for the menu.
-
-    Caller may override `onclick`, `css_class` and whether to include the `data-name` attribute.
-    """
-    label_html = html.escape(name)
-    desc_html = html.escape(description)
-    parts = [f'<button class="{css_class}"']
-    if include_data_name:
-        data_name = html.escape(name, quote=True)
-        parts.append(f' data-name="{data_name}"')
-    parts.append(f' onclick="{onclick}">')
-    parts.append(f"<strong>{label_html}</strong>")
-    if desc_html:
-        parts.append(f"<span>{desc_html}</span>")
-    parts.append("</button>")
-    return "".join(parts)
+__all__ = ["_render_button"]
 
 
 

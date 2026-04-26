@@ -12,6 +12,7 @@ from urllib.parse import urlparse, parse_qs
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from .constants import DEFAULT_MENU
+from .menu_renderer.components.button import _render_exit_button
 
 
 def _build_html(options: dict, menu_name: str) -> str:
@@ -22,6 +23,14 @@ def _build_html(options: dict, menu_name: str) -> str:
     )
     display = "Main Menu" if menu_name == DEFAULT_MENU else menu_name
     title = f"PP Task Runner — {display}"
+    # Only show Exit button on the default (root) menu — prefer shared renderer
+    if menu_name == DEFAULT_MENU:
+        if _render_exit_button:
+            exit_button = _render_exit_button()
+        else:
+            exit_button = '<button class="exit-btn" onclick="doExit()">Exit</button>'
+    else:
+        exit_button = ""
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -51,7 +60,7 @@ h1{{font-size:1.1em;color:#555;margin-bottom:20px;font-weight:500}}
 <div class="card">
   <h1>{title}</h1>
   {option_buttons}
-  <button class="exit-btn" onclick="doExit()">Exit</button>
+  {exit_button}
   <div id="status"></div>
 </div>
 <script>

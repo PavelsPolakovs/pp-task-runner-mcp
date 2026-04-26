@@ -8,13 +8,9 @@ small public-facing API surface.
 from typing import Dict
 import html
 from .styles import _menu_styles
-from .components.button import _render_button
-
-
-def _render_exit_button() -> str:
-    # Use the generic button renderer so the exit button markup is produced
-    # in a single place. Do not include a data-name for the exit control.
-    return _render_button("Exit", "", onclick="doExit()", css_class="btn exit", include_data_name=False)
+# Use shared button renderer from menu_mcp to avoid duplication and
+# to make menu_mcp the single source of UI components.
+from menu_mcp.menu_renderer.components.button import _render_button, _render_exit_button
 
 
 def _render_status_div() -> str:
@@ -58,7 +54,9 @@ def _build_html(options: Dict[str, str], menu_name: str) -> str:
     html_parts.append('<div class="card">')
     html_parts.append(f"  <h1>PP Task Runner — {display}</h1>")
     html_parts.append(buttons)
-    html_parts.append(_render_exit_button())
+    # Only include the Exit button on the root menu
+    if menu_name == "main":
+        html_parts.append(_render_exit_button())
     html_parts.append(_render_status_div())
     html_parts.append("</div>")
     html_parts.append("<script>")
