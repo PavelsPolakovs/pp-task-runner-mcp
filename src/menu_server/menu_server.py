@@ -16,6 +16,7 @@ import threading
 import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlparse, parse_qs
 
 # Load menus from the package so task_config.json is the single source of truth.
 # When running the package (`python -m menu_server`) or with PYTHONPATH=src this
@@ -43,8 +44,12 @@ def _emit(event: dict):
 def _make_handler(tasks: dict):
     class _Handler(BaseHTTPRequestHandler):
         def do_GET(self):
-            if self.path == "/":
-                body = render_menu_html(tasks).encode()
+            parsed = urlparse(self.path)
+            if parsed.path == "/":
+                qs = parse_qs(parsed.query)
+                menu_name = qs.get("menu", [DEFAULT_MENU])[0] or DEFAULT_MENU
+                options = MENUS.get(menu_name, MENUS.get(DEFAULT_MENU, {}))
+                body = render_menu_html(options, menu_name).encode()
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(body)))
@@ -65,9 +70,20 @@ def _make_handler(tasks: dict):
             action = payload.get("action", "")
             name = payload.get("name", "")
 
-            if action == "select" and name in tasks:
-                self._send_json({"feedback": "✓ Sent to Claude"})
-                _emit({"action": "greet", "name": name, "message": tasks[name]})
+            # Determine originating menu from Referer (contains ?menu=...)
+            referer = self.headers.get("Referer", "/")
+            parsed_ref = urlparse(referer)
+            menu_name = parse_qs(parsed_ref.query).get("menu", [DEFAULT_MENU])[0] or DEFAULT_MENU
+            options = MENUS.get(menu_name, MENUS.get(DEFAULT_MENU, {}))
+
+            if action == "select" and name in options:
+                desc = options.get(name, "")
+                if isinstance(desc, str) and desc.startswith("MENU:"):
+                    switch_to = desc.split(":", 1)[1]
+                    self._send_json({"switch": switch_to})
+                else:
+                    self._send_json({"feedback": "✓ Sent to Claude"})
+                    _emit({"action": "greet", "name": name, "message": desc})
 
             elif action == "exit":
                 self._send_json({"feedback": "Goodbye!"})
@@ -81,6 +97,11 @@ def _make_handler(tasks: dict):
                 self.end_headers()
                 _emit({"action": "close"})
                 _done.set()
+
+            elif action == "navigating":
+                # Ignore ephemeral beacons sent during in-page navigation.
+                self.send_response(200)
+                self.end_headers()
 
             else:
                 self.send_response(400)

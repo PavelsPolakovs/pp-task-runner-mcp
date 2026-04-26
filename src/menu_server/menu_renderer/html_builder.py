@@ -28,29 +28,35 @@ def _render_script() -> str:
         "return r.json();}"
         "async function pick(name){"
         "document.getElementById('status').textContent='Running '+name+'…';"
-        "try{const d=await post({action:'select',name});document.getElementById('status').textContent=d.feedback||'✓ Done';}"
+        "try{const d=await post({action:'select',name});"
+        "if(d.switch){window.location='/?menu='+encodeURIComponent(d.switch);return;}"
+        "document.getElementById('status').textContent=d.feedback||'✓ Done';}"
         "catch{document.getElementById('status').textContent='Error';}}"
         "async function doExit(){document.getElementById('status').textContent='Closing…';"
         "try{await post({action:'exit',name:''});}catch{}window.close();}"
-        "window.addEventListener('beforeunload',()=>navigator.sendBeacon('/action',JSON.stringify({action:'close',name:''})));"
+        # Do not automatically send a close beacon on beforeunload. Closing
+        # the page during in-menu navigation previously caused the server to
+        # shutdown prematurely. The server will still stop on explicit
+        # exit/close actions posted by the client.
     )
 
 
-def _build_html(options: Dict[str, str]) -> str:
+def _build_html(options: Dict[str, str], menu_name: str) -> str:
     buttons = "".join(_render_button(name, desc) for name, desc in options.items())
     html_parts = []
     html_parts.append("<!DOCTYPE html>")
     html_parts.append("<html lang=\"en\">")
     html_parts.append("<head>")
     html_parts.append("<meta charset=\"utf-8\">")
-    html_parts.append("<title>PP Task Runner — Main Menu</title>")
+    display = "Main Menu" if menu_name == "main" else menu_name
+    html_parts.append(f"<title>PP Task Runner — {display}</title>")
     html_parts.append("<style>")
     html_parts.append(_menu_styles())
     html_parts.append("</style>")
     html_parts.append("</head>")
     html_parts.append("<body>")
     html_parts.append('<div class="card">')
-    html_parts.append("  <h1>PP Task Runner — Main Menu</h1>")
+    html_parts.append(f"  <h1>PP Task Runner — {display}</h1>")
     html_parts.append(buttons)
     html_parts.append(_render_exit_button())
     html_parts.append(_render_status_div())

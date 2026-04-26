@@ -1,28 +1,38 @@
-"""Web UI builder and HTTP handler factory for the menu package."""
+"""Web UI builder and HTTP handler factory for the menu package.
+
+Supports simple menu-to-menu navigation via descriptions that start with
+the prefix `MENU:<menu_name>`. If an option's description starts with
+that prefix the UI will switch to the named menu; otherwise selecting
+an option sends a greet event with the description as the message.
+"""
 import json
 import time
 import threading
+from urllib.parse import urlparse, parse_qs
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from .constants import DEFAULT_MENU
 
 
-def _build_html(skills: dict) -> str:
-    skill_buttons = "".join(
+def _build_html(options: dict, menu_name: str) -> str:
+    option_buttons = "".join(
         f'<button class="skill-btn" onclick="pick(\'{name}\')">'
         f"<strong>{name}</strong><span>{desc}</span></button>"
-        for name, desc in skills.items()
+        for name, desc in options.items()
     )
+    display = "Main Menu" if menu_name == DEFAULT_MENU else menu_name
+    title = f"PP Task Runner — {display}"
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>PP Task Runner — Main Menu</title>
+<title>{title}</title>
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
 body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;
      display:flex;align-items:center;justify-content:center;min-height:100vh}}
 .card{{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.1);
-       padding:32px;width:100%;max-width:480px}}
+      padding:32px;width:100%;max-width:480px}}
 h1{{font-size:1.1em;color:#555;margin-bottom:20px;font-weight:500}}
 .skill-btn{{display:block;width:100%;padding:14px 16px;margin:8px 0;
             border:1px solid #e0e0e0;border-radius:8px;background:#fff;
@@ -39,8 +49,8 @@ h1{{font-size:1.1em;color:#555;margin-bottom:20px;font-weight:500}}
 </head>
 <body>
 <div class="card">
-  <h1>PP Task Runner — Main Menu</h1>
-  {skill_buttons}
+  <h1>{title}</h1>
+  {option_buttons}
   <button class="exit-btn" onclick="doExit()">Exit</button>
   <div id="status"></div>
 </div>
@@ -54,6 +64,11 @@ async function pick(name){{
   document.getElementById('status').textContent='Running '+name+'…';
   try{{
     const d=await post({{action:'select',name}});
+    if(d.switch){{
+      // navigate to the requested submenu
+      window.location = '/?menu=' + encodeURIComponent(d.switch);
+      return;
+    }}
     document.getElementById('status').textContent=d.feedback||'✓ Done';
   }}catch{{document.getElementById('status').textContent='Error';}}
 }}
@@ -62,14 +77,19 @@ async function doExit(){{
   try{{await post({{action:'exit',name:''}});}}catch{{}}
   window.close();
 }}
-window.addEventListener('beforeunload',()=>
-  navigator.sendBeacon('/action',JSON.stringify({{action:'close',name:''}})));
+// send a lightweight beacon on unload to help detect a real window close.
+// Use action 'navigating' so the server can ignore it when the user is
+// navigating between menus. This avoids shutting down the server during
+// in-menu navigation while keeping the previous behavior of having a
+// beacon present in the page.
+window.addEventListener('beforeunload',() =>
+  navigator.sendBeacon('/action',JSON.stringify({{action:'navigating',name:''}})));
 </script>
 </body>
 </html>"""
 
 
-def make_handler(skills: dict, menu_state) -> type:
+def make_handler(all_menus: dict, menu_state) -> type:
     """Return a BaseHTTPRequestHandler subclass bound to the provided skills and menu_state.
 
     The returned handler will use the provided `menu_state` to post events
@@ -78,8 +98,12 @@ def make_handler(skills: dict, menu_state) -> type:
 
     class _Handler(BaseHTTPRequestHandler):
         def do_GET(self):
-            if self.path == "/":
-                body = _build_html(skills).encode()
+            parsed = urlparse(self.path)
+            if parsed.path == "/":
+                qs = parse_qs(parsed.query)
+                menu_name = qs.get("menu", [DEFAULT_MENU])[0] or DEFAULT_MENU
+                options = all_menus.get(menu_name, all_menus.get(DEFAULT_MENU, {}))
+                body = _build_html(options, menu_name).encode()
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(body)))
@@ -100,9 +124,21 @@ def make_handler(skills: dict, menu_state) -> type:
             action = payload.get("action", "")
             name = payload.get("name", "")
 
-            if action == "select" and name in skills:
-                self._send_json({"feedback": "✓ Sent to Claude"})
-                menu_state.events.put({"action": "greet", "name": name, "message": skills[name]})
+            # Determine originating menu from Referer (contains ?menu=...)
+            referer = self.headers.get("Referer", "/")
+            parsed_ref = urlparse(referer)
+            menu_name = parse_qs(parsed_ref.query).get("menu", [DEFAULT_MENU])[0] or DEFAULT_MENU
+            options = all_menus.get(menu_name, all_menus.get(DEFAULT_MENU, {}))
+
+            if action == "select" and name in options:
+                desc = options.get(name, "")
+                if isinstance(desc, str) and desc.startswith("MENU:"):
+                    # navigation request — instruct client to switch menus
+                    switch_to = desc.split(":", 1)[1]
+                    self._send_json({"switch": switch_to})
+                else:
+                    self._send_json({"feedback": "✓ Sent to Claude"})
+                    menu_state.events.put({"action": "greet", "name": name, "message": desc})
 
             elif action == "exit":
                 self._send_json({"feedback": "Goodbye!"})
@@ -115,6 +151,12 @@ def make_handler(skills: dict, menu_state) -> type:
                 self.end_headers()
                 menu_state.events.put({"action": "close"})
                 self._schedule_shutdown()
+
+            elif action == "navigating":
+                # client is navigating between pages on the same menu server;
+                # ignore this and return 200 so the beacon doesn't cause a 400.
+                self.send_response(200)
+                self.end_headers()
 
             else:
                 self.send_response(400)

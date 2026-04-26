@@ -14,11 +14,11 @@ from .html_builder import _build_html
 # small public wrapper.
 
 
-def render_menu_html(tasks: Dict[str, str]) -> str:
-	"""Public API: render the full HTML page for the given tasks mapping.
+def render_menu_html(options: Dict[str, str], menu_name: str) -> str:
+	"""Public API: render the full HTML page for the given options mapping.
 
 	Returns a string (not bytes) — callers can encode it as needed.
 	"""
-	return _build_html(tasks)
+	return _build_html(options, menu_name)
 
 

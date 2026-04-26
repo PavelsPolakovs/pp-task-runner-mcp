@@ -20,7 +20,7 @@ def register_tools(mcp) -> None:
         nonlocal selected_name, selected_url
 
         menu_name = menu or DEFAULT_MENU
-        skills = MENUS.get(menu_name, MENUS.get(DEFAULT_MENU, {}))
+        options = MENUS.get(menu_name, MENUS.get(DEFAULT_MENU, {}))
 
         with _menu.lock:
             if _menu.server is None:
@@ -31,7 +31,7 @@ def register_tools(mcp) -> None:
                         break
 
                 port = _free_port()
-                Handler = make_handler(skills, _menu)
+                Handler = make_handler(MENUS, _menu)
                 server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
                 _menu.server = server
                 threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -44,7 +44,7 @@ def register_tools(mcp) -> None:
 
         if event.get("action") == "greet":
             selected_name = event["name"]
-            selected_url = skills.get(selected_name, "")
+            selected_url = options.get(selected_name, "")
 
         return event
 
@@ -77,12 +77,12 @@ def register_tools(mcp) -> None:
         """
         nonlocal selected_name, selected_url
         menu_name = menu or DEFAULT_MENU
-        skills = MENUS.get(menu_name, MENUS.get(DEFAULT_MENU, {}))
-        if name not in skills:
-            available = ", ".join(skills)
+        options = MENUS.get(menu_name, MENUS.get(DEFAULT_MENU, {}))
+        if name not in options:
+            available = ", ".join(options)
             return f"Unknown skill '{name}' in menu '{menu_name}'. Available: {available}"
         selected_name = name
-        selected_url = skills[name]
+        selected_url = options[name]
         return f"Activated: {name}"
 
     def get_active_skill() -> str:
@@ -99,8 +99,8 @@ def register_tools(mcp) -> None:
                   Pass "qa" to list the QA/testing tasks.
         """
         menu_name = menu or DEFAULT_MENU
-        skills = MENUS.get(menu_name, MENUS.get(DEFAULT_MENU, {}))
-        return json.dumps([{"name": n, "description": d} for n, d in skills.items()])
+        options = MENUS.get(menu_name, MENUS.get(DEFAULT_MENU, {}))
+        return json.dumps([{"name": n, "description": d} for n, d in options.items()])
 
     _REPO_DIR = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
