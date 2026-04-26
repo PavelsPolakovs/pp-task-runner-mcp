@@ -11,10 +11,10 @@ import time
 import urllib.request
 from unittest.mock import patch
 
-from menu_mcp.constants import SKILLS
+from menu_mcp.constants import TASKS
 from menu_mcp.state import _menu
 
-FIRST_SKILL = next(iter(SKILLS))
+FIRST_SKILL = next(iter(TASKS))
 
 
 def _post(port: int, payload: dict) -> dict | None:
@@ -68,7 +68,7 @@ class TestOpenMenuFlow:
         event = json.loads(results[0][1]["result"])
         assert event["action"] == "greet"
         assert event["name"] == FIRST_SKILL
-        assert event["message"] == SKILLS[FIRST_SKILL]
+        assert event["message"] == TASKS[FIRST_SKILL]
 
     def test_exit_event(self, mcp_app):
         with patch("webbrowser.open"):
@@ -102,7 +102,7 @@ class TestOpenMenuFlow:
             t.join(timeout=5)
 
         assert "PP Task Runner — Main Menu" in html
-        for skill_name in SKILLS:
+        for skill_name in TASKS:
             assert skill_name in html
 
     def test_server_shuts_down_after_event(self, mcp_app):

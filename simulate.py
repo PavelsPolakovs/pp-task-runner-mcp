@@ -14,7 +14,7 @@ import subprocess
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
-MENU_SERVER = os.path.join(REPO_ROOT, "menu_server.py")
+MENU_SERVER = os.path.join(REPO_ROOT, "src", "menu_server", "menu_server.py")
 
 
 def handle(event: dict) -> None:

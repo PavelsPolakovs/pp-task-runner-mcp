@@ -3,9 +3,9 @@ import asyncio
 import json
 from unittest.mock import MagicMock, patch
 
-from menu_mcp.constants import SKILLS
+from menu_mcp.constants import TASKS
 
-FIRST_SKILL = next(iter(SKILLS))
+FIRST_SKILL = next(iter(TASKS))
 
 
 def call(app, tool, **kwargs):
@@ -19,7 +19,7 @@ def text(result):
 class TestListSkills:
     def test_returns_all_skills(self, mcp_app):
         data = json.loads(text(call(mcp_app, "list_skills")))
-        assert [s["name"] for s in data] == list(SKILLS.keys())
+        assert [s["name"] for s in data] == list(TASKS.keys())
 
     def test_includes_name_and_description(self, mcp_app):
         data = json.loads(text(call(mcp_app, "list_skills")))
