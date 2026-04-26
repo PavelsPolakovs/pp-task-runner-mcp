@@ -19,11 +19,10 @@ synthetic "main" menu::
 
 Exports
 -------
-MENUS       dict[str, dict[str, str]]  — all named menus
-DEFAULT_MENU str                        — name of the default menu
-TASKS       dict[str, str]             — alias for MENUS[DEFAULT_MENU]
-SKILLS      dict[str, str]             — backwards-compat alias for TASKS
-_MENU_TIMEOUT int                      — seconds to wait for a browser action
+MENUS       dict[str, dict[str, str]]  - all named menus
+DEFAULT_MENU str                        - name of the default menu
+TASKS       dict[str, str]             - alias for MENUS[DEFAULT_MENU]
+_MENU_TIMEOUT int                      - seconds to wait for a browser action
 """
 
 import json
@@ -58,8 +57,7 @@ if os.path.exists(_TASK_CONFIG):
 if not MENUS:
     MENUS = _FALLBACK
 
-# Backwards compatibility
+# TASKS is the canonical mapping for the default menu
 TASKS = MENUS.get(DEFAULT_MENU, next(iter(MENUS.values())))
-SKILLS = TASKS
 
 _MENU_TIMEOUT = 300

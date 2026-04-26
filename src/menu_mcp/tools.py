@@ -124,7 +124,7 @@ def register_tools(mcp) -> None:
           {"action": "exit"}
           {"action": "close"}
         """
-        menu_server = os.path.join(_REPO_DIR, "menu_server.py")
+        menu_server = os.path.join(_REPO_DIR, "src", "menu_server", "menu_server.py")
         cmd = f"python3 {menu_server}"
         if menu:
             cmd += f" --menu {menu}"

@@ -194,7 +194,7 @@ pp-task-runner-mcp/
 ├── server.py              Entry point — sets PYTHONPATH and delegates to src.main
 ├── simulate.py            Claude Code simulator — spawns server.py and drives it via MCP
 ├── dev_server.py          Module-level FastMCP instance for `mcp dev`
-├── menu_server.py         Standalone variant (Monitor-based, no MCP required)
+├── src/menu_server/menu_server.py         Standalone variant (Monitor-based, no MCP required)
 ├── Makefile               up / dev / test targets
 ├── requirements.txt       Runtime Python dependencies
 ├── requirements-dev.txt   Adds pytest for testing
@@ -206,7 +206,7 @@ pp-task-runner-mcp/
 └── src/
     ├── main.py            FastMCP server entry point
     └── menu_mcp/
-        ├── constants.py   SKILLS registry and timeout setting
+        ├── constants.py   TASKS registry and timeout setting
         ├── state.py       Shared HTTP server state
         ├── tools.py       MCP tool registrations
         └── web.py         HTTP handler and browser UI HTML
