@@ -1,4 +1,4 @@
-"""Register MCP tools for opening and selecting skills.
+"""Register MCP tools for opening and selecting tasks.
 
 This module implements `register_tools(mcp)` by reusing the smaller
 components in this package.
@@ -20,11 +20,8 @@ def register_tools(mcp) -> None:
     selected_name = os.environ.get("MCP_SELECTED_NAME", "")
     selected_url = os.environ.get("MCP_SELECTED_URL", "")
 
-    def open_menu() -> str:
-        """Open browser skill menu (first call) or wait for next user action.
-
-        Returns JSON describing the event, e.g. action=greet/exit/close/timeout
-        """
+    def _open_menu_core(description: str | None = None) -> dict:
+        """Core implementation: open menu and return the event as a dict."""
         nonlocal selected_name, selected_url
 
         with _menu.lock:
@@ -53,7 +50,20 @@ def register_tools(mcp) -> None:
             selected_name = event["name"]
             selected_url = SKILLS.get(selected_name, "")
 
-        return json.dumps(event)
+        return event
+
+    def open_menu(description: str | None = None) -> str:
+        """Compatibility tool for MCP/Monitor: return the event as a JSON string.
+
+        This is the function registered as an MCP tool for compatibility: it
+        returns a JSON string so downstream callers (Monitor) receive a single
+        line of JSON on stdout.
+        """
+        return json.dumps(_open_menu_core(description))
+
+    def open_menu_dict(description: str | None = None) -> dict:
+        """Programmatic API: return the event as a Python dict."""
+        return _open_menu_core(description)
 
     def select_skill(name: str) -> str:
         """Set the active skill by name."""
@@ -100,6 +110,8 @@ def register_tools(mcp) -> None:
             return f"Error running git pull: {e}"
 
     mcp.tool()(open_menu)
+    # register open_menu_dict as a callable for programmatic use if desired
+    mcp.tool()(open_menu_dict)
     mcp.tool()(select_skill)
     mcp.tool()(get_active_skill)
     mcp.tool()(list_skills)

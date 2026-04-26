@@ -101,7 +101,7 @@ class TestOpenMenuFlow:
             _post(port, {"action": "exit", "name": ""})
             t.join(timeout=5)
 
-        assert "Select a skill for Claude Code" in html
+        assert "PP Task Runner — Main Menu" in html
         for skill_name in SKILLS:
             assert skill_name in html
 

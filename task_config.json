@@ -1,0 +1,8 @@
+{
+  "tasks": [
+    {"name": "Run tests", "description": "Execute test suite (pytest)"},
+    {"name": "Lint code", "description": "Run linters and static analysis"},
+    {"name": "Show status", "description": "Display current MCP status"}
+  ]
+}
+
