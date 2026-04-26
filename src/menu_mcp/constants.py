@@ -1,6 +1,6 @@
 """Single source of truth for all menu definitions.
 
-Config is loaded from ``task_config.json`` at the repository root.
+Config is loaded from ``src/menu_mcp/task_config.json`` (package-local).
 
 New format (named menus)::
 
@@ -28,14 +28,10 @@ _MENU_TIMEOUT int                      - seconds to wait for a browser action
 import json
 import os
 
-_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Always prefer the package-local configuration file. The repository-root
+# copy was removed; keep the code simple and load config from the package.
 _PACKAGE_TASK_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "task_config.json")
-_TASK_CONFIG = os.path.join(_REPO_ROOT, "task_config.json")
-
-# Prefer package-local config (src/menu_mcp/task_config.json) when available;
-# fall back to repository-root task_config.json for backwards compatibility.
-if os.path.exists(_PACKAGE_TASK_CONFIG):
-    _TASK_CONFIG = _PACKAGE_TASK_CONFIG
+_TASK_CONFIG = _PACKAGE_TASK_CONFIG
 
 _FALLBACK: dict[str, dict[str, str]] = {
     "main": {"Greating": "**** Hello! Welcome to MCP! ****"}
