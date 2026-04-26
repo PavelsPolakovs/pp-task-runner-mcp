@@ -83,8 +83,16 @@ async function pick(name){{
 }}
 async function doExit(){{
   document.getElementById('status').textContent='Closing…';
-  try{{await post({{action:'exit',name:''}});}}catch{{}}
-  window.close();
+  try{{ await post({{action:'exit',name:''}}); }}catch{{}}
+  // Ensure server receives a close event even if the fetch above is aborted
+  try{{ navigator.sendBeacon('/action', JSON.stringify({{action:'close',name:''}})); }}catch{{}}
+  // Try several strategies to close the window. Many browsers only allow
+  // script-initiated windows to be closed programmatically; attempt a
+  // self-replacement first then close. If that fails, navigate to about:blank
+  // as a graceful fallback.
+  try{{ window.open('','_self'); window.close(); return; }}catch{{}}
+  try{{ window.close(); return; }}catch{{}}
+  window.location.href = 'about:blank';
 }}
 // send a lightweight beacon on unload to help detect a real window close.
 // Use action 'navigating' so the server can ignore it when the user is
@@ -118,6 +126,29 @@ def make_handler(all_menus: dict, menu_state) -> type:
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
+            elif parsed.path == "/launch":
+                # Launcher page: open the real menu in a script-created window
+                # so that the child window is eligible to be closed by JS.
+                qs = parse_qs(parsed.query)
+                menu_name = qs.get("menu", [DEFAULT_MENU])[0] or DEFAULT_MENU
+                launch_html_str = """<!doctype html><meta charset=utf-8>
+<script>
+  (function(){
+    try{
+      var menu = new URLSearchParams(location.search).get('menu')||'';
+      var url = '/' + (menu?('?menu='+encodeURIComponent(menu)):'');
+      var w = window.open(url, '_blank');
+      // give the child a moment to open then try to close this launcher
+      setTimeout(function(){ try{ window.close(); }catch(e){} }, 50);
+    }catch(e){/* ignore */}
+  })();
+</script>"""
+                launch_html = launch_html_str.encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(launch_html)))
+                self.end_headers()
+                self.wfile.write(launch_html)
             else:
                 self.send_response(404)
                 self.end_headers()

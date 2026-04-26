@@ -5,6 +5,7 @@ import queue
 import subprocess
 import threading
 import webbrowser
+from urllib.parse import quote
 from http.server import ThreadingHTTPServer
 
 from .constants import DEFAULT_MENU, MENUS, _MENU_TIMEOUT
@@ -35,7 +36,11 @@ def register_tools(mcp) -> None:
                 server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
                 _menu.server = server
                 threading.Thread(target=server.serve_forever, daemon=True).start()
-                webbrowser.open(f"http://127.0.0.1:{port}")
+                # Open a small launcher page that will programmatically open
+                # the real menu in a script-created window. That allows the
+                # menu page to be closed programmatically via window.close().
+                launch_url = f"http://127.0.0.1:{port}/launch?menu={quote(menu_name or '')}"
+                webbrowser.open(launch_url)
 
         try:
             event = _menu.events.get(timeout=_MENU_TIMEOUT)

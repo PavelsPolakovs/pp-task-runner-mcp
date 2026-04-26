@@ -63,7 +63,8 @@ class TestMenuHTTP:
             # webbrowser.open should be invoked with the ephemeral server URL
             assert mock_open.called
             called_url = mock_open.call_args[0][0]
-            assert called_url == f"http://127.0.0.1:{port}"
+            # allow either the root URL or the new launcher path
+            assert called_url.startswith(f"http://127.0.0.1:{port}"), called_url
 
             # shut down cleanly
             _post(port, {"action": "exit", "name": ""})
